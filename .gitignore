@@ -1,56 +1,43 @@
-# compiled output
-/dist
-/node_modules
-/build
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment (never commit secrets)
+.env
+.env.*
+!.env.example
 
 # Logs
-logs
 *.log
-npm-debug.log*
-pnpm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # OS
 .DS_Store
+Thumbs.db
+*.tmp
 
-# Tests
-/coverage
-/.nyc_output
+# Test artifacts
+coverage/
+.cache/
 
-# IDEs and editors
-/.idea
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
+# NestJS
+*.tsbuildinfo
 
-# IDE - VSCode
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+# Prisma local generation
+prisma/*.db
+prisma/*.db-journal
 
-# dotenv environment variable files
-.env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
+# Local Spec-Driven Development state (active feature pointer — not shared)
+.specify/feature.json
 
-# temp directory
-.temp
-.tmp
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Diagnostic reports (https://nodejs.org/api/report.html)
-report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+# Local tooling caches (Kilo Code workflows + node_modules)
+.kilocode/

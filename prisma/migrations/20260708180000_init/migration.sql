@@ -1,0 +1,2 @@
+-- Initial migration: empty schema (foundation establishes migration baseline only).
+-- Domain models added by specs 002+.

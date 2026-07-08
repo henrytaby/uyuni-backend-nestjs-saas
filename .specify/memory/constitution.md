@@ -1,50 +1,251 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+  Sync Impact Report
+  ==================
+  Version change: N/A (template) → 1.0.0
+  Modified principles:
+    - [PRINCIPLE_1_NAME] → I. Strict Multi-Tenant Isolation
+    - [PRINCIPLE_2_NAME] → II. Granular Role-Based Access Control (RBAC)
+    - [PRINCIPLE_3_NAME] → III. Subscription-Driven Feature Gating
+    - [PRINCIPLE_4_NAME] → IV. Immutable Audit Trail
+    - [PRINCIPLE_5_NAME] → V. API-First Modular Architecture
+  Added sections:
+    - Technology Stack & Architecture Constraints
+    - Domain Modules & Quality Gates
+    - Governance
+  Removed sections: None
+  Templates requiring updates:
+    - .specify/templates/plan-template.md ✅ compatible (Constitution Check section generic)
+    - .specify/templates/spec-template.md ✅ compatible (no constitution-specific refs)
+    - .specify/templates/tasks-template.md ✅ compatible (no constitution-specific refs)
+    - .specify/templates/commands/*.md ⚠ not found (no command templates exist)
+  Follow-up TODOs: None
+-->
+
+# Uyuni SaaS Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Strict Multi-Tenant Isolation
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Every data operation MUST be scoped to a single Tenant. The system MUST enforce
+tenant isolation at the infrastructure layer, not by convention.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+- All database queries and writes MUST automatically inject `tenant_id` via
+  `AsyncLocalStorage` and Prisma extensions — no manual tenant filtering in
+  Controllers or Services.
+- PostgreSQL Row-Level Security (RLS) MUST be enabled as a secondary defense
+  layer.
+- Every domain endpoint MUST be protected by `TenantGuard`.
+- Cross-tenant data access is mathematically impossible by design; automated
+  anti-leakage tests MUST prove this invariant.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+**Rationale**: In B2B SaaS, a single tenant data leak is a critical breach.
+Architectural enforcement eliminates the human-error vector.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### II. Granular Role-Based Access Control (RBAC)
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Access control MUST be module-scoped, action-granular, and ownership-aware.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+- Roles (`Admin`, `Empleado`, `Auditor`) are global definitions but MUST be
+  assigned per-Tenant via the `TenantUser` membership entity.
+- Permissions MUST be defined per module and action (`CREATE`, `READ`,
+  `UPDATE`, `DELETE`); no blanket access is permitted.
+- The `scope_all` flag MUST determine whether a user sees all Tenant records
+  or only their own — this MUST be enforced at the repository layer, not in
+  Controllers.
+- Platform superadmins MAY bypass RBAC for cross-tenant support, but every
+  bypass MUST be logged in the audit trail.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+**Rationale**: Fine-grained RBAC prevents privilege escalation and supports
+diverse organizational structures across different business niches.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### III. Subscription-Driven Feature Gating
+
+Feature availability and operational limits MUST be governed by the Tenant's
+active Plan tier.
+
+- `Plan` entities MUST define quantitative limits (`max_usuarios`,
+  `almacenamiento`) and qualitative gates (module access restrictions).
+- The system MUST reject operations that exceed Plan limits before execution
+  (e.g., inviting a user beyond `max_usuarios` MUST return a 403 with a
+  clear upgrade prompt).
+- Upgrades and downgrades MUST be handled atomically; a downgrade MUST NOT
+  delete data but MAY restrict access to gated modules.
+- Tenant payment state (activo, moroso, suspendido) MUST affect feature
+  availability.
+
+**Rationale**: Subscription enforcement is the revenue engine of SaaS.
+Architectural gating ensures no feature is accidentally accessible without
+the corresponding plan tier.
+
+### IV. Immutable Audit Trail
+
+Every mutation and access event MUST be captured immutably and automatically.
+
+- **Access Logs**: An interceptor MUST capture method, route, status, IP,
+  `user_id`, and `tenant_id` for every request.
+- **Change Data Capture (CDC)**: Every data modification MUST record
+  `old_value` vs `new_value`, the actor, and the timestamp. CDC records MUST
+  be append-only — no updates or deletes.
+- **Soft-Delete**: All deletions MUST be logical (`is_active = false`);
+  physical deletion is prohibited on domain entities.
+- **Audit Columns**: `created_at` and `updated_at` MUST be managed by Prisma
+  natively. `created_by_id`, `updated_by_id`, and `deleted_by_id` MUST be
+  injected automatically via a Prisma Extension reading from
+  `AsyncLocalStorage` — no developer manual passing is required or allowed.
+
+**Rationale**: Regulatory compliance and operational debugging demand a
+complete, tamper-proof history. Automating audit column injection removes
+the number-one source of audit gaps: developer forgetfulness.
+
+### V. API-First Modular Architecture
+
+The backend MUST expose all functionality via REST with OpenAPI contracts;
+modules MUST be autonomous and decoupled.
+
+- **OpenAPI as Contract**: NestJS MUST auto-generate Swagger documentation
+  (`/api/docs`) from DTOs and Controllers. The Angular frontend MUST
+  auto-generate its TypeScript interfaces and HTTP services from this
+  contract — no manual DTO duplication.
+- **Feature Module Autonomy**: Each domain module (auth, crm, sales, etc.)
+  MUST be a self-contained NestJS Feature Module with its own Controllers,
+  Services, and DTOs. No centralized routing file is permitted.
+- **Decentralized Routing**: Routes MUST be defined via decorators on
+  Controllers (`@Controller('resource')`) and methods (`@Get()`, `@Post()`);
+  module registration in `AppModule` is the only coupling point.
+- **Generic Repository Pattern**: A `TenantScopedRepository<T>` MUST
+  encapsulate pagination, sorting, global search (searchable fields with
+  `ilike`/`contains`), and tenant isolation. All list endpoints MUST accept
+  a standardized `DataTableRequestDto` and return `{ data: T[], total:
+  number }`.
+
+**Rationale**: Multi-repo projects require a single source of truth for
+contracts. Decentralized modules eliminate merge conflicts and enable
+parallel development across teams.
+
+## Technology Stack & Architecture Constraints
+
+### Stack
+
+| Layer | Technology | Constraint |
+|---|---|---|
+| Language | TypeScript 5.x strict | No `any`; strict null checks enabled |
+| Framework | NestJS 11.x | Feature Module structure enforced |
+| ORM | Prisma 6.x | Migrations only; no raw SQL without review |
+| Database | PostgreSQL 16+ | RLS enabled on all tenant-scoped tables |
+| Validation | `class-validator` + `class-transformer` | All DTOs MUST use decorators |
+| Auth | `@nestjs/jwt` + `passport-jwt` + `bcrypt` | Refresh token rotation mandatory |
+| Logging | `pino` + `nestjs-pino` | Structured JSON only |
+| Testing | Jest + supertest + Testcontainers | E2E must use real DB containers |
+
+### Clean Architecture Layers
+
+- **Domain**: Abstract entities and business models — no framework or ORM
+  dependencies.
+- **Application**: Use-case Services and port interfaces — orchestrates Domain
+  through abstractions.
+- **Infrastructure**: Concrete implementations (Prisma repositories, mailers,
+  loggers) — implements Application ports.
+- **Presentation**: REST Controllers, Guards, Interceptors, Exception Filters
+  — depends on Application layer only.
+
+### Repository Structure
+
+```text
+uyuni-backend/
+├── src/
+│   ├── main.ts
+│   ├── app.module.ts
+│   ├── common/           # Decorators, Guards, Interceptors, Filters
+│   ├── infrastructure/   # Prisma, Logger, Mailer
+│   └── modules/          # Domain modules (auth, tenancy, crm, sales, etc.)
+├── prisma/
+│   └── schema.prisma     # Database schema and migrations
+├── test/                 # E2E tests
+└── package.json
+```
+
+### Multi-Repo Contract Enforcement
+
+Backend and Frontend live in separate GitHub repositories. The OpenAPI spec
+generated by NestJS is the sole contract. The Angular frontend MUST use
+`openapi-generator` or `ng-openapi-gen` to auto-generate its services and
+interfaces from the backend's Swagger JSON. Manual type mirroring is
+prohibited.
+
+## Domain Modules & Quality Gates
+
+### Domain Modules (ERP-Lite Core)
+
+1. **SaaS Administration & Tenancy**: Subscription management, Plan
+   upgrades/downgrades, payment state tracking, user invitations, role
+   assignments.
+2. **CRM Core (Clients & Contacts)**: Lead/Prospect management, Account/Client
+   records, contact directory, interaction history.
+3. **Agenda & Tasks (Productivity)**: Calendar appointments/meetings, task
+   management, team assignments within Tenant.
+4. **Sales & Billing**: Quotation creation, invoice/receipt issuance, basic
+   income/expense tracking (petty cash).
+5. **Basic Inventory (Logistics — Pro/Premium Plans only)**: Product/service
+   catalog, simple stock control, fixed-asset management.
+
+### Dynamic Catalogs
+
+- Catalog Registry system for Tenant-parameterized value lists (e.g., client
+  categories, task statuses).
+- Bulk Loader endpoint (`POST /catalogs/bulk`) MUST populate multiple
+  frontend selectors in a single request.
+
+### Observability (SRE)
+
+- **Structured Logging**: Every log entry MUST be JSON with traceable context
+  (`requestId`, `tenantId`, `userId`).
+- **Health Checks**: Liveness and Readiness endpoints MUST be available.
+- **Telemetry**: Architecture MUST be prepared for OpenTelemetry export.
+
+### Security (DevSecOps)
+
+- Input/output validation MUST occur at the API boundary via DTOs.
+- Rate Limiting MUST be enforced per IP, User, and Tenant.
+- CORS MUST restrict to the Frontend domain in production; Helmet MUST be
+  enabled.
+- Account lockout MUST trigger after 5 failed login attempts.
+
+### Testing & CI/CD
+
+- **Testing Pyramid**: Unit tests for business logic; E2E tests for
+  Controllers.
+- **Testcontainers**: E2E tests MUST run against a real PostgreSQL instance
+  in an isolated container.
+- **Anti-Leakage Gates**: Automated tests MUST verify that a Tenant A user
+  cannot access Tenant B data — this is a non-negotiable CI gate.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This Constitution is the supreme governing document for all development
+decisions on the Uyuni SaaS backend. In case of conflict between this
+document and any other practice, convention, or prior decision, this
+Constitution takes precedence.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+### Amendment Procedure
+
+1. Proposed amendments MUST be documented with rationale and impact analysis.
+2. Amendments affecting existing principles MUST include a migration plan for
+   in-progress work.
+3. Constitution version MUST be incremented per semantic versioning:
+   - **MAJOR**: Principle removal or backward-incompatible redefinition.
+   - **MINOR**: New principle added or materially expanded guidance.
+   - **PATCH**: Clarifications, wording, typo fixes, non-semantic refinements.
+4. All PRs and code reviews MUST verify compliance with the current
+   Constitution version.
+5. Complexity that violates a principle MUST be justified in the
+   Implementation Plan's Complexity Tracking table.
+
+### Compliance Review
+
+- Every feature spec MUST include a Constitution Check gate before Phase 0.
+- The Constitution Check MUST be re-verified after Phase 1 design.
+- Anti-patterns (manual tenant filtering, missing audit columns, centralized
+  routing) MUST be caught in code review.
+
+**Version**: 1.0.0 | **Ratified**: 2026-07-07 | **Last Amended**: 2026-07-07
