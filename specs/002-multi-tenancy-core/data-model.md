@@ -103,7 +103,11 @@ memberships.
 | password_hash | String | NOT NULL | bcrypt hash |
 | first_name | String | nullable | Given name |
 | last_name | String | nullable | Family name |
-| is_platform_admin | Boolean | NOT NULL, default false | Platform superadmin bypass flag |
+| is_platform_admin | Boolean | NOT NULL, default false | Platform superadmin bypass flag (RLS `app.is_platform_admin` + Prisma extension skip) |
+| is_verified | Boolean | NOT NULL, default false | Email verification status. Set true after the user completes the email-verification flow (spec 003) |
+| failed_login_attempts | Int | NOT NULL, default 0 | Consecutive failed login attempts. Seeded here; the lockout policy (5 attempts → lock) is enforced in spec 003 (auth). Reset to 0 on successful login |
+| locked_until | DateTime | nullable | If set, the account is locked until this timestamp. Seeded here; the unlock logic (lock + TTL expiry) is enforced in spec 003 |
+| last_login_at | DateTime | nullable | Last successful login timestamp. Updated by spec 003 (auth) on each login |
 | is_active | Boolean | NOT NULL, default true | Soft-delete flag |
 | created_at | DateTime | NOT NULL, auto | Creation timestamp |
 | updated_at | DateTime | NOT NULL, auto | Last update timestamp |
@@ -118,6 +122,26 @@ memberships.
 - password_hash: bcrypt hash (length 60 when hashed; validated at the auth
   layer, not stored as plain text)
 - first_name/last_name: 1-50 chars if provided
+- is_verified: boolean; default false; flipped to true only by the
+  email-verification flow in spec 003
+- failed_login_attempts: integer >= 0; default 0. The 5-attempt → lock
+  policy is enforced in spec 003; this spec only persists the counter
+- locked_until: nullable timestamp. When non-null, login is rejected;
+  null means the account is not locked. Enforcement in spec 003
+- last_login_at: nullable timestamp; updated on successful login (spec 003)
+
+**Forward-Compatibility Note** (spec 003 / auth):
+The four auth-seeding fields (`is_verified`, `failed_login_attempts`,
+`locked_until`, `last_login_at`) are persisted here so spec 003 does not
+need a separate schema migration. The *verification token / OTP* storage
+for email verification is NOT a User column — it is a separate
+`verification_token` (or `otp_token`) table created in spec 003, because
+verification codes are ephemeral (TTL, attempts, regeneratable) and do not
+belong on the permanent User entity. Similarly, the lockout policy
+(threshold = 5 attempts, lock TTL) is spec 003 configuration, not a DB
+constraint. The `is_platform_admin` flag fulfills the "superuser" role
+(single level); a future two-tier superadmin split, if needed, would be a
+spec 004 (RBAC) change — do NOT add a separate `is_superuser` column here.
 
 ---
 

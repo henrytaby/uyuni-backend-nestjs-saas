@@ -63,7 +63,8 @@ related correctly and Plan limits are stored.
    the Plan's limits are inherited.
 3. **Given** a registered User and an existing Tenant, **When** the User
    is added as a TenantUser with a role, **Then** the membership is
-   created and the User can authenticate into that Tenant context.
+   created (the full authentication flow into that Tenant context is
+   implemented in spec 003).
 
 ---
 

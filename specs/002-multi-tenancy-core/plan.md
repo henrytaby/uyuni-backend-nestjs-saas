@@ -187,6 +187,25 @@ a custom ThrottlerGuard can key on `TenantContext.tenantId`. Deferring is
 safe because no tenant-scoped endpoints exist until authentication lands;
 the per-IP throttle from spec 001 remains active in the meantime.
 
+### Constitution Security Gate: Account Lockout (deferred)
+
+The constitution (Security §DevSecOps) mandates that account lockout MUST
+trigger after 5 failed login attempts. This requires authentication token
+tracking and login-attempt counters, which depend on the authentication layer.
+**Account lockout policy is deferred** to spec 003 (Authentication), where the
+login flow and attempt-tracking infrastructure are implemented. Deferring is
+safe because no login endpoint exists in spec 002.
+
+However, to avoid a separate schema migration in spec 003, the User entity
+seeds the lockout *infrastructure columns* here: `failed_login_attempts`
+(Int, default 0), `locked_until` (DateTime, nullable), `last_login_at`
+(DateTime, nullable), and `is_verified` (Boolean, default false). These
+columns are persisted in the `tenant_core` migration; spec 003 implements
+the increment/lock/unlock/reset logic and the email-verification OTP flow
+(`verification_token` table — ephemeral, NOT a User column). The
+`is_platform_admin` flag (already present) fulfills the superuser role at a
+single level; a two-tier superadmin split would be a spec 004 change.
+
 ## Complexity Tracking
 
 > No violations — table intentionally empty.
