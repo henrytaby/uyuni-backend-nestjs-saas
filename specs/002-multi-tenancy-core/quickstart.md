@@ -14,10 +14,26 @@
 ## Setup
 
 1. **Apply the tenancy migration** (creates Plan, Tenant, User, TenantUser
-   tables + RLS policies on TenantUser):
-   ```bash
-   npx prisma migrate dev --name tenant_core
-   ```
+   tables + RLS policies on TenantUser). Prisma does not support RLS natively
+   in `schema.prisma`, so the migration must be created and edited before
+   applying:
+    ```bash
+    # Step 1: Generate the migration SQL without applying it
+    npx prisma migrate dev --create-only --name tenant_core
+
+    # Step 2: Open the generated .sql file in prisma/migrations/<ts>_tenant_core/migration.sql
+    # and append the RLS policies at the end:
+    #
+    #   ALTER TABLE "TenantUser" ENABLE ROW LEVEL SECURITY;
+    #   CREATE POLICY tenant_isolation_policy ON "TenantUser"
+    #     USING (current_setting('app.is_platform_admin', true) = 'true'
+    #            OR tenant_id = current_setting('app.tenant_id', true)::uuid)
+    #     WITH CHECK (current_setting('app.is_platform_admin', true) = 'true'
+    #            OR tenant_id = current_setting('app.tenant_id', true)::uuid);
+    #
+    # Step 3: Apply the edited migration
+    npx prisma migrate dev
+    ```
 
 2. **Seed a Free plan and a platform admin** (one-time, via a seed script
    or the API):
@@ -156,7 +172,12 @@ the Prisma extension auto-injects them.
   app role WITHOUT setting `app.tenant_id` (simulating a bug in the
   extension). **Expected**: RLS returns no rows (`SET LOCAL` not called →
   `current_setting('app.tenant_id')` is null → policy `tenant_id = null`
-  matches nothing). This proves RLS is the secondary defense.
+  matches nothing). This proves RLS is the secondary defense. Note: the
+  Prisma extension wraps every tenant-scoped query in an interactive
+  `$transaction` with `SET LOCAL` — this is mandatory because Prisma's
+  connection pool may otherwise route `SET LOCAL` and the subsequent query
+  to different physical connections, silently breaking RLS (see research.md
+  Task 3).
 
 ## Constitution Compliance Verification
 
@@ -165,7 +186,7 @@ the Prisma extension auto-injects them.
 - **Principle II (RBAC, partial)**: User has `isPlatformAdmin`; TenantUser
   has a `role` string. Full permissions in spec 004.
 - **Principle III (Gating, partial)**: Plan stores `moduleAccess` + limits.
-  Enforceing guard in spec 008.
+  Enforcing guard in spec 008.
 - **Principle IV (Audit, partial)**: Audit columns exist; auto-injection
   bridge validated in Scenario 3 step 3. Full extension in spec 005.
 - **Principle V (API-First)**: All four entities documented in

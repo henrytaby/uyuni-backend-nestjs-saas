@@ -2,7 +2,7 @@
 
 **Module**: Tenancy
 **Base Path**: `/tenancy/users`
-**Auth**: Platform admin for global CRUD; TenantGuard for membership-scoped reads
+**Auth**: Platform admin for global CRUD; TenantGuard for membership-scoped reads. Exception: `GET /me/tenants` is `@Public()` (no TenantGuard) — the user needs to list their tenants *before* selecting an active tenant context.
 **Plan Gate**: N/A
 
 Users are global identities (unique email platform-wide). This contract
@@ -31,7 +31,7 @@ Create a global user record.
 | Field | Type | Required | Validation |
 |-------|------|----------|------------|
 | email | string | yes | valid email, unique |
-| password | string | yes | min 8 chars (hashed on store) |
+| password | string | yes | min 8 chars (plain-text input; bcrypt-hashed to 60 chars on storage) |
 | firstName | string | no | 1-50 chars |
 | lastName | string | no | 1-50 chars |
 | isPlatformAdmin | boolean | no | default false |
@@ -120,7 +120,9 @@ those are deactivated separately (spec 008).
 List the tenants the authenticated user belongs to (used for tenant
 context switching after login — full flow in spec 003, but the read is here).
 
-**RBAC**: Authenticated user (any).
+**RBAC**: Authenticated user (any). **TenantGuard**: SKIPPED via `@Public()`
+— this endpoint runs before a tenant context is established (the user needs
+to see their tenant list to choose one). Only JWT authentication is required.
 
 **Response** (200 OK):
 ```json

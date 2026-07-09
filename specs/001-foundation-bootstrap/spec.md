@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-07
 
-**Status**: Draft
+**Status**: Done
 
 **Input**: User description: "Install and configure NestJS backend from scratch with PostgreSQL, Prisma, structured logging, OpenAPI documentation, security hardening, health checks, and global validation pipeline."
 
@@ -27,7 +27,9 @@ JSON response and a log entry with requestId.
 
 1. **Given** a fresh clone and a running PostgreSQL instance, **When** the
    developer starts the application, **Then** it connects to the database
-   and responds to health check requests within 5 seconds.
+   and the server is ready to accept requests within 5 seconds (startup
+   time target; see plan.md performance goals — distinct from per-request
+   latency which is benchmarked separately).
 2. **Given** the application is running, **When** a request is sent to the
    health endpoint, **Then** a JSON response is returned with status
    "ok" and database connectivity information.

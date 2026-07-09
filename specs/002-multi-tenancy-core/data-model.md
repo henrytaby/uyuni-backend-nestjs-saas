@@ -26,17 +26,22 @@ tenant_id column, no RLS).
 | tier_level | Int | NOT NULL | Numeric tier (1=Free, 2=Pro, 3=Premium) |
 | max_users | Int | NOT NULL, > 0 | Quantitative limit: max tenant users |
 | storage_limit | BigInt | NOT NULL, >= 0 | Quantitative limit: bytes of storage |
-| module_access | Json | NOT NULL | Array of enabled module names (qualitative gates), e.g., `["auth","tenancy","crm","agenda","sales","inventory"]` |
+| module_access | Json | NOT NULL | Array of enabled module names (qualitative gates). Canonical names: `["auth","tenancy","crm","agenda","sales","inventory"]`. Order does not matter; validation rejects unknown names. |
 | price | Decimal | nullable | Monthly price |
 | is_active | Boolean | NOT NULL, default true | Soft-delete flag (cannot hard-delete a Plan in use) |
 | created_at | DateTime | NOT NULL, auto | Creation timestamp (Prisma managed) |
 | updated_at | DateTime | NOT NULL, auto | Last update timestamp (Prisma managed) |
+| created_by_id | UUID | FK → User, nullable | Auto-injected (bridge in this spec; full extension in spec 005) |
+| updated_by_id | UUID | FK → User, nullable | Auto-injected |
+| deleted_by_id | UUID | FK → User, nullable | Auto-injected on soft-delete (bridge in this spec; full extension in spec 005) |
 
 **Indexes**: `@unique([name])`.
 
 **Validation Rules**:
 - name: 1-50 chars, unique
-- module_access: must be a JSON array of valid module name strings
+- module_access: must be a JSON array of strings from the canonical set
+  {auth, tenancy, crm, agenda, sales, inventory}; empty array allowed;
+  duplicates rejected
 - tier_level: integer 1-10
 
 ---
@@ -63,6 +68,7 @@ the Tenant's own members via app-layer guards.
 | updated_at | DateTime | NOT NULL, auto | Last update timestamp |
 | created_by_id | UUID | FK → User, nullable | Auto-injected (bridge in this spec; full extension in spec 005) |
 | updated_by_id | UUID | FK → User, nullable | Auto-injected |
+| deleted_by_id | UUID | FK → User, nullable | Auto-injected on soft-delete (bridge in this spec; full extension in spec 005) |
 
 **Indexes**: `@unique([slug])`, `(plan_id)`.
 
@@ -103,6 +109,7 @@ memberships.
 | updated_at | DateTime | NOT NULL, auto | Last update timestamp |
 | created_by_id | UUID | FK → User (self), nullable | For audit (self-creation or platform admin) |
 | updated_by_id | UUID | FK → User (self), nullable | |
+| deleted_by_id | UUID | FK → User (self), nullable | Auto-injected on soft-delete (bridge in this spec; full extension in spec 005) |
 
 **Indexes**: `@unique([email])`.
 
@@ -133,6 +140,7 @@ and formalized into the full RBAC model in spec 004.
 | updated_at | DateTime | NOT NULL, auto | Last update timestamp |
 | created_by_id | UUID | FK → User, nullable | Auto-injected (the inviter) |
 | updated_by_id | UUID | FK → User, nullable | |
+| deleted_by_id | UUID | FK → User, nullable | Auto-injected on soft-delete (bridge in this spec; full extension in spec 005) |
 
 **Indexes**: `@unique([tenant_id, user_id])`, `(user_id)`.
 
@@ -161,7 +169,17 @@ TenantUser N──1 User  N──1 Tenant    (membership triangle)
 | Plan | ❌ No | No | Platform-global; access via app guards (platform admin) |
 | Tenant | ❌ No | Is the tenant root | App guards restrict (platform admin or self-member) |
 | User | ❌ No | Global identity | App guards restrict (own record / members visible) |
-| TenantUser | ✅ Yes | Yes | `USING/WITH CHECK (tenant_id = current_setting('app.tenant_id')::uuid)` |
+| TenantUser | ✅ Yes | Yes | `USING/WITH CHECK (current_setting('app.is_platform_admin', true) = 'true' OR tenant_id = current_setting('app.tenant_id', true)::uuid)` |
+
+**RLS Policy Explanation**: The policy includes a bypass for platform
+superadmins via `current_setting('app.is_platform_admin', true) = 'true'`.
+When the Prisma extension detects `TenantContext.isPlatformAdmin`, it sets
+the session variable `app.is_platform_admin = 'true'` alongside
+`app.tenant_id`. The `true` second argument to `current_setting()` is
+`missing_ok` — if the variable is not set, it returns NULL (policy
+denies bypass) instead of throwing an error. This allows platform admins
+to perform cross-tenant support queries while RLS still blocks all other
+users to their own tenant's data.
 
 All *future* tenant-scoped domain entities (CRM, Sales, etc.) will carry
 `tenant_id` + RLS following the TenantUser pattern.
@@ -194,7 +212,7 @@ interface TenantContext {
 }
 ```
 
-### Standard Audit Columns (applied to Tenant, User, TenantUser; reused by all future entities)
+### Standard Audit Columns (applied to Plan, Tenant, User, TenantUser; reused by all future entities)
 
 | Column | Type | Populated By |
 |--------|------|--------------|
@@ -202,4 +220,11 @@ interface TenantContext {
 | updated_at | DateTime | Prisma native (`@updatedAt`) |
 | created_by_id | UUID FK→User | Prisma extension reading TenantContext **— bridge in this spec; full extension in spec 005** |
 | updated_by_id | UUID FK→User | Prisma extension reading TenantContext **— bridge in this spec; full extension in spec 005** |
-| deleted_by_id | UUID FK→User | Prisma extension reading TenantContext (spec 005) |
+| deleted_by_id | UUID FK→User | Prisma extension reading TenantContext **— bridge in this spec; full extension in spec 005** |
+
+**Note**: `deleted_by_id` is included in all entities from this spec forward.
+Constitution Principle IV mandates it for every soft-deleted entity (`is_active =
+false`). The column exists in the schema from this migration; the Prisma
+extension in spec 005 will make injection fully automatic for all audit columns.
+In the interim, the tenancy Prisma extension populates it via context reads
+when a soft-delete operation occurs.

@@ -33,6 +33,13 @@ datasource db {
 }
 ```
 
+**Note on Prisma 7 driver adapter**: The `url` field is required in the
+schema for `prisma migrate` to connect. At runtime, `PrismaService` passes
+the URL to the `PrismaPg` driver adapter (`new PrismaPg({ connectionString:
+url })`) and instantiates `PrismaClient` with `super({ adapter })`. The
+adapter takes precedence over the schema URL for query execution, but the
+schema URL remains necessary for the CLI (migrations, introspection).
+
 **First migration**: An empty initial migration is created
 (`prisma migrate dev --name init`) to establish the migration history.
 This migration creates no tables but seeds `_prisma_migrations`.

@@ -30,8 +30,11 @@ conventions.
 
 **Decision**: Use `nestjs-pino` with `pino-http`. Configure a custom logger
 that emits JSON with the fields: requestId, timestamp, level, message,
-method, path, statusCode, responseTime. Inject requestId via a middleware
-that generates a UUID per request and stores it on the request object.
+method, path, statusCode, responseTime. requestId is generated per-request
+by pino-http's `genReqId` option (logger.module.ts) — it reuses any
+existing `req.id` or generates a new UUID via `node:crypto.randomUUID()`,
+attaching it to both the request and response objects so it flows through
+the structured log entry. This avoids a separate NestJS middleware.
 
 **Rationale**: `nestjs-pino` is the idiomatic Pino integration for NestJS.
 It replaces the default logger, supports request-scoped logging out of the
@@ -50,17 +53,20 @@ this iteration; they will be populated once authentication and tenancy
 
 ### 3. OpenAPI/Swagger Auto-Generation
 
-**Decision**: Use `@nestjs/swagger` with `SwaggerModule.loadPluginMetadata`
-enabled in the NestJS CLI plugin config (nest-cli.json). Configure
-`DocumentBuilder` with API title, version, and description. Serve Swagger
-UI at `/api/docs` and the raw JSON at `/api/docs-json`.
+**Decision**: Use `@nestjs/swagger` with the CLI plugin enabled in
+`nest-cli.json`. Configure `DocumentBuilder` with API title, version, and
+description. Serve Swagger UI at `/api/docs` and the raw JSON at
+`/api/docs-json`.
 
-**Rationale**: The `@nestjs/swagger` CLI plugin auto-generates DTO property
-metadata from TypeScript types, reducing boilerplate `@ApiProperty()`
-decorators (though explicit decorators are still preferred for clarity).
-Serving at `/api/docs` is the documented path the constitution references.
-The JSON endpoint is what the Angular frontend will consume via
-`openapi-generator` (Principle V: "OpenAPI as Contract").
+**Rationale**: The `@nestjs/swagger` CLI plugin (configured in `nest-cli.json`
+with `introspectComments: true`) auto-generates DTO property metadata from
+TypeScript types, reducing boilerplate `@ApiProperty()` decorators (though
+explicit decorators are still preferred for clarity). In `@nestjs/swagger`
+v11+, `SwaggerModule.loadPluginMetadata()` is no longer needed — the plugin
+is loaded automatically by the NestJS compiler. Serving at `/api/docs` is the
+documented path the constitution references. The JSON endpoint is what the
+Angular frontend will consume via `openapi-generator` (Principle V: "OpenAPI
+as Contract").
 
 **Alternatives considered**:
 - *Manual OpenAPI YAML*: Rejected — drifts from code; violates DRY.

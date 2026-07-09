@@ -2,12 +2,13 @@
 
 **Module**: Tenancy
 **Base Path**: `/tenancy/tenants`
-**Auth**: Platform admin for CRUD; TenantGuard for tenant-scoped reads
+**Auth**: Platform admin for CUD; tenant members for read access (own tenant only)
 **Plan Gate**: N/A
 
 Tenants are company accounts. Creation/management is platform-admin;
-within a tenant, members access the tenant's data (protected by TenantGuard
-+ RLS) — but the Tenant entity itself is managed at platform level.
+within a tenant, members can read their own tenant's data (protected by
+TenantGuard + app-layer guards) — but the Tenant entity itself is managed
+at platform level.
 
 Note: Full tenant provisioning (with admin user + default catalogs) is
 spec 008. This contract covers raw tenant CRUD.
@@ -126,6 +127,9 @@ subscription dates are updated by spec 008 / billing.
 ## DELETE /tenancy/tenants/:id
 
 Soft-delete (deactivate) a tenant. Members lose access; data preserved.
+This is the only way to set `isActive=false`; PATCH does not accept
+`isActive` — deactivation must go through this endpoint so that
+side-effects (member notification, billing stop) are triggered in spec 008.
 
 **RBAC**: Platform admin
 

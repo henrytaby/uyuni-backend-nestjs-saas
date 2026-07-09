@@ -1,8 +1,8 @@
-# Specification Quality Checklist: [FEATURE]
+# Specification Quality Checklist: 002-multi-tenancy-core
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-07-07
-**Feature**: spec.md
+**Feature**: 002-multi-tenancy-core
 
 ## Content Quality
 

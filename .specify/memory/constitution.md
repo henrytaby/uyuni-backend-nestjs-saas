@@ -1,14 +1,24 @@
 <!--
   Sync Impact Report
   ==================
-  Version change: N/A (template) → 1.0.0
-  Modified principles:
+  Version change: 1.0.0 → 1.0.1 (PATCH)
+  Rationale: Align ORM version with installed package.json (^7.8.0). Prisma 7.x
+    supersedes the previously documented 6.x. The Client Extensions API
+    (`Prisma.defineExtension`, `$extends`) is stable in 7.x with the same
+    surface; the PrismaPg driver adapter (used since spec 001) is the
+    recommended connection strategy in 7.x.
+  Modified sections:
+    - Technology Stack & Architecture Constraints → ORM row: Prisma 6.x → Prisma 7.x
+  No principle semantics changed; this is a clarifying version alignment (PATCH
+    per Governance §Amendment Procedure).
+  Prior version change: N/A (template) → 1.0.0
+  Modified principles (v1.0.0):
     - [PRINCIPLE_1_NAME] → I. Strict Multi-Tenant Isolation
     - [PRINCIPLE_2_NAME] → II. Granular Role-Based Access Control (RBAC)
     - [PRINCIPLE_3_NAME] → III. Subscription-Driven Feature Gating
     - [PRINCIPLE_4_NAME] → IV. Immutable Audit Trail
     - [PRINCIPLE_5_NAME] → V. API-First Modular Architecture
-  Added sections:
+  Added sections (v1.0.0):
     - Technology Stack & Architecture Constraints
     - Domain Modules & Quality Gates
     - Governance
@@ -131,7 +141,7 @@ parallel development across teams.
 |---|---|---|
 | Language | TypeScript 5.x strict | No `any`; strict null checks enabled |
 | Framework | NestJS 11.x | Feature Module structure enforced |
-| ORM | Prisma 6.x | Migrations only; no raw SQL without review |
+| ORM | Prisma 7.x | Migrations only; Client Extensions API (`$extends`/`defineExtension`) for auto-injection; PrismaPg driver adapter required; no raw SQL without review |
 | Database | PostgreSQL 16+ | RLS enabled on all tenant-scoped tables |
 | Validation | `class-validator` + `class-transformer` | All DTOs MUST use decorators |
 | Auth | `@nestjs/jwt` + `passport-jwt` + `bcrypt` | Refresh token rotation mandatory |
@@ -248,4 +258,4 @@ Constitution takes precedence.
 - Anti-patterns (manual tenant filtering, missing audit columns, centralized
   routing) MUST be caught in code review.
 
-**Version**: 1.0.0 | **Ratified**: 2026-07-07 | **Last Amended**: 2026-07-07
+**Version**: 1.0.1 | **Ratified**: 2026-07-07 | **Last Amended**: 2026-07-08

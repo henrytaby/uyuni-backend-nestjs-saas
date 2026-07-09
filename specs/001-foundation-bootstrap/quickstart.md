@@ -87,10 +87,11 @@ Validate Swagger is auto-generated and DTO validation rejects bad input.
    shows the 503 response variant).
 
    *Note*: To exercise validation, a sample DTO endpoint is required. Since
-   no domain modules exist yet, validation is validated via a temporary
-   sample DTO in the e2e test, or deferred until the first domain module
-   (spec 002) adds a real DTO endpoint. The global ValidationPipe is wired
-   in this feature regardless.
+   no domain modules exist yet, validation is exercised via a dedicated
+   test-only fixture (`test/fixtures/validation-sample.controller.ts`,
+   task T029) imported inside the e2e spec via a TestModule. This proves
+   the ValidationPipe rejects invalid payloads with a structured 400. The
+   fixture is removed once the first real domain DTO arrives in spec 002.
 
 3. **Alternatively, verify the ValidationPipe is registered** by checking
    `main.ts` includes:
@@ -124,7 +125,8 @@ Validate Helmet, CORS, rate limiting, and liveness/readiness separation.
    (origin not in CORS_ORIGINS). Repeat with `-H "Origin: http://localhost:4200"`
    **Expected**: `access-control-allow-origin: http://localhost:4200`.
 
-3. **Trigger rate limiting**:
+3. **Trigger rate limiting** (run quickly — the window is 60s; slow
+   execution may let early requests expire from the window):
    ```bash
    for i in $(seq 1 110); do curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/health/live; done
    ```

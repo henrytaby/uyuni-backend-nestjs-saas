@@ -19,7 +19,7 @@ authentication, tenant, or business logic is included in this iteration.
 
 **Language/Version**: TypeScript 5.x strict (no `any`, strict null checks, noImplicitAny)
 
-**Primary Dependencies**: NestJS 11.x, Prisma 6.x, @nestjs/platform-express,
+**Primary Dependencies**: NestJS 11.x, Prisma 7.x (PrismaPg driver adapter), @nestjs/platform-express,
 @nestjs/swagger, class-validator, class-transformer, helmet, @nestjs/throttler,
 nestjs-pino, pino, zod
 
@@ -88,17 +88,15 @@ src/
 │   │   ├── prisma.service.ts
 │   │   └── prisma.module.ts
 │   ├── logger/
-│   │   └── logger.module.ts                   # nests-pino config
+│   │   └── logger.module.ts                   # nestjs-pino config
 │   └── health/
 │       ├── health.controller.ts               # /health/live, /health/ready
 │       ├── health.module.ts
 │       └── indicators/
 │           └── prisma-health.indicator.ts
 └── modules/                                    # Reserved for future domain modules
-└── prisma/
-    └── schema.prisma                           # Minimal: datasource + generator
 prisma/
-└── schema.prisma
+└── schema.prisma                           # Minimal: datasource + generator
 test/
 └── e2e/
     └── foundation.e2e-spec.ts

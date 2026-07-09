@@ -31,7 +31,7 @@ target tenant) OR platform admin.
 
 | Field | Type | Required | Validation |
 |-------|------|----------|------------|
-| tenantId | UUID | yes | Must match caller's tenant (platform admin may specify any) |
+| tenantId | UUID | yes | Must match caller's tenant (platform admin may specify any; tenant admin gets 403 if mismatch) |
 | userId | UUID | yes | Must reference an existing active User |
 | role | string | yes | "ADMIN", "EMPLEADO", or "AUDITOR" |
 
@@ -50,7 +50,7 @@ target tenant) OR platform admin.
 
 **Errors**:
 - 400: Invalid role
-- 403: Not a tenant admin (missing ADMIN role)
+- 403: Not a tenant admin (missing ADMIN role) or tenantId does not match caller's tenant context
 - 409: Membership already exists (the (tenant_id, user_id) pair is unique)
 
 ---

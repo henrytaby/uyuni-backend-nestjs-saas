@@ -1,8 +1,8 @@
-# Specification Quality Checklist: [FEATURE]
+# Specification Quality Checklist: 001-foundation-bootstrap
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-07-07
-**Feature**: spec.md
+**Feature**: 001-foundation-bootstrap
 
 ## Content Quality
 

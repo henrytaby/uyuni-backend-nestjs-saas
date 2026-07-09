@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-07
 
-**Status**: Draft
+**Status**: Planned
 
 **Input**: User description: "Implement the multi-tenant data isolation foundation with Plan, Tenant, User, and TenantUser entities, request-scoped context, automatic tenant_id injection, PostgreSQL RLS, and TenantGuard protection."
 
@@ -100,7 +100,11 @@ automatically includes the tenant_id without explicit code.
 ### Edge Cases
 
 - A user belonging to multiple tenants switches context — the system MUST
-  update the request context to reflect the new active tenant.
+  update the request context to reflect the new active tenant. The active
+  tenant is determined by the `tenant_id` claim in the JWT (set at
+  authentication / token-rotation time in spec 003). A user with multiple
+  memberships obtains a tenant-scoped token per active tenant; switching
+  requires re-authentication or token refresh with the target tenant_id.
 - A request arrives without a tenant_id (e.g., public endpoint or
   pre-authentication) — the system MUST allow unauthenticated paths while
   still requiring TenantGuard on protected endpoints.
@@ -157,20 +161,27 @@ automatically includes the tenant_id without explicit code.
   Tenant B under any circumstance — verified by automated anti-leakage
   test suite.
 - **SC-002**: 100% of domain endpoints are protected by TenantGuard —
-  verified by an automated check that scans all registered routes.
+  verified by an automated e2e test that introspects the NestJS
+  `HttpAdapterHost` to enumerate all registered routes and asserts each
+  (except those decorated with `@Public()`) has TenantGuard in its guard
+  pipeline.
 - **SC-003**: A developer adding a new database write operation does not
   need to manually specify tenant_id — the system injects it
   automatically.
-- **SC-004**: Context propagation adds zero measurable overhead compared
-  to manual parameter passing (negligible latency impact).
+- **SC-004**: Context propagation adds < 1ms overhead per request compared
+  to manual parameter passing (benchmarked via the e2e suite's performance
+  baseline established in spec 001).
 
 ## Assumptions
 
-- RLS policies use a session variable set per-request; this is acceptable
-  for connection-pooling architectures with Prisma.
+- RLS policies use a session variable set per-query inside an interactive
+  Prisma `$transaction`; `SET LOCAL` is transaction-scoped and safe for
+  connection-pooling architectures with Prisma (see research.md Task 3 for
+  why `$transaction` is mandatory, not optional).
 - Plan module-access gates are a predefined list matching the domain
   modules in the constitution (crm, agenda, sales, inventory).
 - The initial set of roles for TenantUser is: Admin, Empleado, Auditor.
-  Additional roles can be added later.
+  The role string is normalized into a formal enum in spec 004 (RBAC);
+  no additional roles are introduced in this spec.
 - Payment state transitions (activo → moroso → suspendido) are managed
   externally; this feature only stores and reads the state.

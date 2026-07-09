@@ -33,7 +33,7 @@ Create a new plan tier.
 | name | string | yes | 1-50 chars, unique |
 | tierLevel | number | yes | integer 1-10 |
 | maxUsers | number | yes | > 0 |
-| storageLimit | number | yes | >= 0 (bytes) |
+| storageLimit | number | yes | >= 0 (bytes); accepted as JSON number, stored as Prisma `BigInt` |
 | moduleAccess | string[] | yes | array of module names |
 | price | number | no | >= 0 |
 
@@ -100,6 +100,9 @@ flow for that.
 **RBAC**: Platform admin
 
 **Response** (200 OK): Updated plan object.
+
+**Errors**:
+- 409: `maxUsers` would be below current member count of one or more tenants
 
 ---
 

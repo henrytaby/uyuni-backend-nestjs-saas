@@ -20,7 +20,7 @@ include the user's accessible tenants and roles.
 
 **Language/Version**: TypeScript 5.x strict
 
-**Primary Dependencies**: NestJS 11.x, Prisma 6.x, @nestjs/jwt, passport-jwt,
+**Primary Dependencies**: NestJS 11.x, Prisma 7.x, @nestjs/jwt, passport-jwt,
 @nestjs/passport, bcrypt, class-validator, class-transformer, @nestjs/swagger
 
 **Storage**: PostgreSQL 16+ (User table from spec 002; new RefreshToken +
