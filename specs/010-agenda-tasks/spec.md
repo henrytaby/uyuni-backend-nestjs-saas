@@ -12,6 +12,7 @@
 - 004 (RBAC with agenda:CRUD)
 - 005 (audit)
 - 006 (DataTable pattern)
+- 007-dynamic-catalogs: Provides task_statuses catalog for visual label customization per tenant. Note: the core TaskStatus pipeline (PENDING/IN_PROGRESS/DONE/CANCELLED) is a fixed enum; the catalog provides additional tenant-customizable labels.
 - 009 (CRM client/contact linking)
 
 **Input**: User description: "Implement a productivity module with calendar appointments/meetings, task management with assignments, conflict detection, and reminders — essential for service businesses like clinics."
@@ -36,7 +37,7 @@ A team member schedules an appointment with a date/time (timezone handling: all 
 
 ### User Story 2 - Task Management & Assignment (Priority: P2)
 
-A team member creates a task with a title, description, due date, priority (Low, Medium, High), and status. Tasks have a validated status pipeline: PENDING→IN_PROGRESS→DONE, and any status→CANCELLED. A catalog reference is used for `task_statuses` if customizable, but kept as an enum for now. Tasks can be assigned to another team member within the same tenant. Ownership scope provides visibility to both the creator and assignee. Tasks are filterable by assignee, status, and priority.
+A team member creates a task with a title, description, due date, priority (Low, Medium, High), and status. Tasks have a validated status pipeline: PENDING→IN_PROGRESS→DONE, and any status→CANCELLED. A catalog reference is used for `task_statuses` for visual labels only; the core pipeline is a fixed enum. Tasks can be assigned to another team member within the same tenant. Ownership scope provides visibility to both the creator and assignee. Tasks are filterable by assignee, status, and priority.
 
 **Why this priority**: Task management supports operational coordination within a tenant. Assignment enables delegation — a core need for teams.
 

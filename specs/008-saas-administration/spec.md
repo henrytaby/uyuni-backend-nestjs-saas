@@ -40,7 +40,8 @@ RBAC roles, and default catalogs are all created.
    than creating a duplicate.
 3. **Given** a newly provisioned tenant, **When** the admin logs in,
    **Then** default catalogs (client_categories, lead_sources,
-   payment_methods, task_statuses, service_types) and default RBAC roles
+   payment_methods, task_statuses, service_types, income_categories,
+   expense_categories, product_categories, asset_categories) and default RBAC roles
    (Admin, Empleado, Auditor) are available.
 4. **Given** a provisioning request, **When** any step fails (e.g., catalog
    seeding), **Then** the entire operation rolls back — no partial tenant
@@ -201,7 +202,9 @@ Wait past expiry and verify acceptance fails.
   7 days, configurable via environment variable).
 - **FR-010**: Upon tenant provisioning, system MUST seed: (a) default
   RBAC RoleAssignment for admin user with Admin role, (b) default catalog
-  data from 007-dynamic-catalogs seed list.
+  data from 007-dynamic-catalogs seed list (client_categories, lead_sources,
+  payment_methods, task_statuses, service_types, income_categories,
+  expense_categories, product_categories, asset_categories).
 - **FR-011**: If an invited user's email already exists as a User, the
   system MUST link the existing User to the tenant rather than creating
   a duplicate.
@@ -223,6 +226,7 @@ Wait past expiry and verify acceptance fails.
 - **FR-017**: Tenant provisioning and subscription management endpoints
   MUST require `tenancy:CREATE` and `tenancy:UPDATE` RBAC permissions
   respectively. Invitation management requires `tenancy:CREATE`.
+- **FR-018**: Invitation and SubscriptionChange list endpoints MUST use the DataTable pattern from 006 for pagination, search, and filtering.
 
 ### Non-Functional Requirements
 
@@ -301,9 +305,7 @@ ACTIVO ──→ MOROSO ──→ SUSPENDIDO
   of email delivery.
 - Invitation tokens are cryptographically secure random strings (32+
   bytes, hex-encoded). They are NOT JWTs — they are opaque lookup tokens.
-- Plan.moduleAccess is a JSON object mapping module names to booleans:
-  `{ "crm": true, "agenda": true, "inventory": false }`. A missing key
-  is treated as false (deny by default).
+- Plan.moduleAccess canonical gate names: crm (all plans), agenda (all plans), sales (all plans), catalogs (all plans), inventory (Pro+ only), audit (Premium only). A missing key in the JSON is treated as false (deny by default).
 - Self-service tenant registration (sign-up) is NOT in scope for this
   feature. Only platform admin provisioning is covered. Self-service
   may be added as a future enhancement.
@@ -320,5 +322,6 @@ ACTIVO ──→ MOROSO ──→ SUSPENDIDO
   during provisioning. Provides `tenancy:CREATE/UPDATE` permissions.
 - **005-audit-infrastructure**: Provides audit column injection and CDC
   for tracking all provisioning and subscription changes.
+- **006-generic-repository-datatables**: Provides DataTable pattern for invitation, subscription change, and tenant list endpoints.
 - **007-dynamic-catalogs**: Provides catalog seeding service called during
   tenant provisioning to populate default catalogs.

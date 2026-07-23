@@ -6,10 +6,10 @@
 This module provides a comprehensive sales and billing subsystem encompassing Quotations, Invoicing, and Petty Cash/Cashbook tracking. It supports full financial workflows including state transitions, precise document referencing, and dynamic catalog integration.
 
 ## Dependencies
-- **002-multi-tenant**: Tenant isolation (`tenantId`).
+- **002-multi-tenancy-core**: Tenant isolation (`tenantId`).
 - **004-rbac**: Permission enforcement (`sales:CRUD`).
-- **005-audit-logging**: System auditing for all financial transactions.
-- **006-datatable**: Filtering, pagination, sorting (DataTable pattern) for lists.
+- **005-audit-infrastructure**: System auditing for all financial transactions.
+- **006-generic-repository-datatables**: Filtering, pagination, sorting (DataTable pattern) for lists.
 - **007-catalogs**: Dynamic categories (`income_categories`, `expense_categories`, `payment_methods`).
 - **009-crm**: Client linking for quotations and invoices (`clientId`).
 
@@ -39,7 +39,7 @@ As an accountant, I want to log minor cash movements (income and expenses), so t
 - **FR-002**: Apply tenant scoping on all queries.
 - **FR-013**: Reference numbers MUST be auto-generated with tenant-specific prefix and sequential numbering. Numbers MUST be unique per tenant and gap-free within each document type.
 - **FR-014**: Quotation-to-invoice conversion MUST be atomic. If invoice creation fails, the quotation status remains unchanged.
-- **FR-015**: Void/cancelled invoices MUST reverse any stock movements (if integrated with 012) and restore payment records. Voiding is a soft operation (status change, not deletion).
+- **FR-015**: Void/cancelled invoices MUST change status to VOID and record the void date and reason. Stock movement reversal (if inventory module is active) is handled by 012-basic-inventory, not by this module.
 - **FR-016**: All sales list endpoints MUST use the DataTable pattern from 006.
 - **FR-017**: Payment methods MUST come from the `payment_methods` dynamic catalog from 007, not a fixed enum.
 
@@ -80,6 +80,25 @@ As an accountant, I want to log minor cash movements (income and expenses), so t
 - `quantity` (Decimal)
 - `unitPrice` (Decimal)
 - `totalPrice` (Decimal)
+- standard audit columns
+
+### QuotationLineItem
+- `id` (UUID)
+- `tenantId` (UUID)
+- `quotationId` (UUID) - linked Quotation
+- `description` (String)
+- `quantity` (Decimal)
+- `unitPrice` (Decimal)
+- `lineTotal` (Decimal)
+- standard audit columns
+
+### Payment
+- `id` (UUID)
+- `tenantId` (UUID)
+- `invoiceId` (UUID) - linked Invoice
+- `amount` (Decimal)
+- `date` (Date)
+- `paymentMethod` (String) - catalog payment_methods value/code
 - standard audit columns
 
 ### PettyCash

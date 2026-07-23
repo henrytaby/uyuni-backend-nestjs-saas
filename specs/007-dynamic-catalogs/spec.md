@@ -168,10 +168,12 @@ not in the catalog (fails with validation error).
 - **FR-012**: Catalog list endpoints MUST use the generic DataTable
   pattern from 006 (DataTableRequestDto/DataTableResponseDto with
   pagination, search, and filters).
-- **FR-013**: System MUST seed default catalog categories and items
-  during tenant provisioning. Default categories include: `client_categories`,
-  `lead_sources`, `payment_methods`, `task_statuses`, `service_types`.
-  Tenants can customize these after creation.
+- **FR-013**: System MUST expose a `CatalogSeedService` that accepts a
+  list of category definitions (slug, name, items[]) and creates them
+  atomically for a given tenant. This service is consumed by
+  008-saas-administration (Provisioning) to seed default catalogs during
+  tenant creation. The specific catalog list is defined in 008, not here.
+  Tenants can customize the seeded catalogs after creation.
 - **FR-014**: When a catalog category is deactivated, the bulk loader
   MUST NOT return it. All items within a deactivated category are
   excluded from active queries regardless of their individual isActive
@@ -247,9 +249,11 @@ If a slug doesn't exist:
 
 ## Assumptions
 
-- Default/seeded catalogs are provided during tenant provisioning for
-  common categories: client_categories, lead_sources, payment_methods,
-  task_statuses, service_types. Tenants can customize these.
+- Default/seeded catalogs are provided during tenant provisioning by
+  008-saas-administration, which calls the `CatalogSeedService` exposed
+  by this module. The specific catalog list (client_categories,
+  lead_sources, payment_methods, etc.) is defined and maintained in 008.
+  This module provides the engine; 008 provides the data.
 - Catalog item values are strings; no typed values (numeric, date) are
   needed initially.
 - Sort order is a simple integer; ties are broken alphabetically by name.

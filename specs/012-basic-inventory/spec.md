@@ -36,10 +36,10 @@ As an operations manager, I need to track fixed assets distinct from regular inv
 - **FR-017**: Access to the inventory module is gated. The module gate name in `Plan.moduleAccess` MUST be exactly `inventory`.
 
 ## Dependencies
-- **002**: Tenancy (tenantId isolation)
+- **002-multi-tenancy-core**: Tenancy (tenantId isolation)
 - **004**: RBAC (requires permissions `inventory:CREATE`, `inventory:READ`, `inventory:UPDATE`, `inventory:DELETE`)
-- **005**: Audit Logging
-- **006**: DataTable
+- **005-audit-infrastructure**: Audit Logging
+- **006-generic-repository-datatables**: DataTable
 - **007**: Catalogs (`product_categories`, `service_types`, `asset_categories`)
 - **008**: Plan Gating (module access control)
 - **011**: Invoicing (integration for automatic stock reduction upon sales)
