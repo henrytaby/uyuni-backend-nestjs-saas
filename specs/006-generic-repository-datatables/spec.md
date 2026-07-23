@@ -158,7 +158,10 @@ it is rejected.
   if declared as an allowed filter field.
 - Soft-deleted records (is_active=false) — MUST be excluded from all list
   queries by default. Auditors MAY include them via an explicit
-  include_deleted=true parameter (requires audit:read RBAC permission).
+  include_deleted=true parameter. This MUST be architecturally enforced via
+  an `IncludeDeletedInterceptor` that strips the parameter if the user lacks
+  the `audit:read` permission, preventing developers from accidentally leaking
+  soft-deleted records.
 
 ## Requirements *(mandatory)*
 
@@ -204,8 +207,12 @@ it is rejected.
   once in the repository definition, not in each Controller call.
 - **FR-014**: System MUST exclude soft-deleted records (is_active=false)
   from all list queries by default. Auditors MAY request inclusion via
-  an explicit include_deleted=true query parameter, which requires the
-  audit:read RBAC permission.
+  an explicit include_deleted=true query parameter. To enforce this architecturally,
+  an `IncludeDeletedInterceptor` MUST strip this parameter from the request
+  unless the route is decorated with `@AllowIncludeDeleted()` AND the user
+  has the `audit:read` permission.
+- **FR-015**: The repository MUST ensure `config.includes` is successfully
+  passed to the underlying Prisma `findMany` call to eagerly load relations.
 
 ### Non-Functional Requirements
 
