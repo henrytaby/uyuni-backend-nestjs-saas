@@ -3,18 +3,19 @@
 **Feature Branch**: `003-authentication`
 
 **Created**: 2026-07-07
+**Updated**: 2026-07-22 (Clean Architecture & Security Standards Alignment)
 
-**Status**: Draft
+**Status**: Ready
 
-**Input**: User description: "Implement email-based authentication with JWT access tokens, refresh token rotation with blacklisting, account lockout after 5 failed attempts, and tenant context switching without re-login."
+**Input**: User description: "Implement email-based authentication with cryptographic access tokens, refresh token rotation with blacklisting, account lockout after 5 failed attempts, and tenant context switching without re-login."
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Email Login with JWT Tokens (Priority: P1)
+### User Story 1 - Email Login with Secure Tokens (Priority: P1)
 
 A user enters their email and password. The system validates the credentials
-and issues a short-lived access token and a refresh token. The access token
-is used for subsequent authenticated requests. The user can see which tenants
+and issues a short-lived access token and a secure, long-lived refresh token. 
+The access token is used for subsequent authenticated requests. The user can see which tenants
 they belong to.
 
 **Why this priority**: Authentication is the gateway to every protected
@@ -27,7 +28,7 @@ access token to call a protected endpoint successfully.
 
 1. **Given** a registered user with a verified email and password, **When**
    they submit valid credentials to the login endpoint, **Then** the system
-   returns an access token, a refresh token, and the list of tenants the
+   returns an access token, a secure refresh token (via protected transport), and the list of tenants the
    user belongs to.
 2. **Given** a valid access token, **When** the user calls a protected
    endpoint, **Then** the request is authorized and proceeds normally.
@@ -36,21 +37,21 @@ access token to call a protected endpoint successfully.
 
 ---
 
-### User Story 2 - Refresh Token Rotation & Logout (Priority: P2)
+### User Story 2 - Refresh Token Rotation & Session Management (Priority: P2)
 
 When an access token expires, the user submits their refresh token to obtain
 a new token pair. The old refresh token is immediately invalidated
 (blacklisted). If a previously used refresh token is submitted, the system
 detects token reuse and invalidates the entire token family for that session
-as a security measure. The user can explicitly log out, invalidating all
-their tokens.
+as a security measure. The user can explicitly log out, invalidating their current session.
+Additionally, the user can terminate all active sessions across all devices.
 
 **Why this priority**: Refresh token rotation prevents token theft and
-replay attacks. Without it, stolen refresh tokens grant perpetual access.
+replay attacks. Global logout allows users to secure compromised accounts.
 
 **Independent Test**: Log in, use the refresh token once (succeeds), attempt
 to reuse the same refresh token (fails and triggers security alert), log
-out and verify the access token no longer works.
+out globally and verify no existing tokens work.
 
 **Acceptance Scenarios**:
 
@@ -64,6 +65,8 @@ out and verify the access token no longer works.
 3. **Given** an authenticated user, **When** they call the logout endpoint,
    **Then** their current access token and all refresh tokens for the
    session are invalidated.
+4. **Given** an authenticated user, **When** they call the global logout endpoint,
+   **Then** all active sessions and tokens across all devices are immediately invalidated.
 
 ---
 
@@ -113,33 +116,36 @@ user, switch tenant context, verify data scope changes.
 
 - **FR-001**: System MUST authenticate users via email and password,
   returning a short-lived access token and a refresh token on success.
-- **FR-002**: System MUST return the list of tenants the user belongs to
+- **FR-002**: System MUST deliver long-lived refresh tokens via secure, script-inaccessible transport (e.g., HttpOnly cookies) to mitigate Cross-Site Scripting (XSS) attacks.
+- **FR-003**: System MUST return the list of tenants the user belongs to
   upon successful login, including the user's role in each tenant.
-- **FR-003**: System MUST implement refresh token rotation: each use of a
+- **FR-004**: System MUST implement refresh token rotation: each use of a
   refresh token invalidates the previous one and issues a new pair.
-- **FR-004**: System MUST detect refresh token reuse and, upon detection,
+- **FR-005**: System MUST detect refresh token reuse and, upon detection,
   invalidate all tokens for the affected user session and log a security
   event.
-- **FR-005**: System MUST implement account lockout after 5 consecutive
+- **FR-006**: System MUST implement account lockout after 5 consecutive
   failed login attempts for a configurable duration.
-- **FR-006**: System MUST provide a logout endpoint that invalidates the
+- **FR-007**: System MUST provide a logout endpoint that invalidates the
   current access token and all refresh tokens for the session.
-- **FR-007**: System MUST allow an authenticated user to switch their
+- **FR-008**: System MUST provide a global logout endpoint to invalidate all active sessions for a user across all devices.
+- **FR-009**: System MUST allow an authenticated user to switch their
   active tenant context without re-authentication.
-- **FR-008**: System MUST validate that the user is a member of the target
+- **FR-010**: System MUST validate that the user is a member of the target
   tenant before allowing a context switch.
-- **FR-009**: System MUST hash passwords using a strong one-way algorithm
+- **FR-011**: System MUST hash passwords using a strong one-way algorithm
   before storage.
-- **FR-010**: System MUST NOT reveal whether an email exists in the system
+- **FR-012**: System MUST NOT reveal whether an email exists in the system
   during login — invalid email and invalid password MUST return the same
   generic error message.
-- **FR-011**: System MUST include the tenant_id and user_id in the access
-  token payload for downstream context propagation.
+- **FR-013**: System MUST include the identity payload (tenant_id, user_id) securely in the access token for downstream context propagation.
+- **FR-014**: System MUST apply strict network-level rate limiting (Throttling) on authentication endpoints to mitigate password spraying attacks.
+- **FR-015**: The identity and data model MUST be explicitly designed to accommodate future Multi-Factor Authentication (MFA) mechanisms without architectural breaking changes.
 
 ### Key Entities
 
 - **RefreshToken**: Stored token record. Attributes: token hash, linked
-  User, is_revoked flag, expires_at, created_at.
+  User, is_revoked flag, expires_at, created_at, replaced_by_id (for tracking lineage).
 - **LoginAttempt**: Tracks consecutive failures. Attributes: linked User,
   attempt_count, locked_until timestamp.
 
@@ -156,6 +162,7 @@ user, switch tenant context, verify data scope changes.
 - **SC-004**: A multi-tenant user can switch between tenants seamlessly
   without re-entering credentials, with context reflected in under 1
   second.
+- **SC-005**: All long-lived authentication artifacts are inaccessible to client-side scripts.
 
 ## Assumptions
 
@@ -169,3 +176,4 @@ user, switch tenant context, verify data scope changes.
   pre-verified or invited.
 - Password requirements: minimum 8 characters. Further complexity rules
   can be added later.
+- Data access policies assume a transaction-scoped session variable for isolation, which the authentication layer will reliably feed via the identity token.
