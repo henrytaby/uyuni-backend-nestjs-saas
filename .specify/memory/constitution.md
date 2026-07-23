@@ -228,12 +228,12 @@ prohibited.
 | Multi-Tenancy Core | 002 | `Tenant`, `TenantUser`, `Plan`, `User` | `tenant-scoped.extension.ts`, `TenantContextMiddleware`, `TenantGuard`, `TenantContextService` |
 | Authentication | 003 | `RefreshToken` | `AuthModule`, `JwtStrategy`, `TokenService`, `LockoutService` |
 | RBAC | 004 | `Role`, `Permission`, `RoleAssignment` | `RbacModule`, `PermissionsGuard`, `PermissionResolverService`, `OwnershipScopeInterceptor` |
+| Audit Infrastructure | 005 | `AccessLog`, `ChangeRecord` | `AuditModule`, `AccessLogInterceptor`, `AuditLogService` |
 
 ### Specified but Not Yet Implemented
 
 | Component | Spec | Status | Dependency |
 |---|---|---|---|
-| Audit Infrastructure | 005 | Spec ready | Depends on 001-004 (done) |
 | Generic Repository & DataTables | 006 | Spec ready | Depends on 002, 004 |
 | Dynamic Catalogs | 007 | Spec ready | Depends on 002, 006 |
 | SaaS Administration | 008 | Spec ready | Depends on 002, 003, 007 |
@@ -242,10 +242,10 @@ prohibited.
 | Sales & Billing | 011 | Spec ready | Depends on 006, 007, 009 |
 | Basic Inventory | 012 | Spec ready | Depends on 006, 007 |
 
-### Current Prisma Schema (8 Models)
+### Current Prisma Schema (10 Models)
 
 `Plan`, `Tenant`, `User`, `TenantUser`, `RefreshToken`, `Role`,
-`Permission`, `RoleAssignment`
+`Permission`, `RoleAssignment`, `AccessLog`, `ChangeRecord`
 
 ### Global Guards & Interceptors (Execution Order)
 

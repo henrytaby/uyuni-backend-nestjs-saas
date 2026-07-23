@@ -45,3 +45,4 @@ prisma/*.db-journal
 
 # Local tooling caches (agents workflows + node_modules)
 .agents/.kilo
+.env*

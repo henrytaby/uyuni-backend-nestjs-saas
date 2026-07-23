@@ -20,7 +20,7 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.user.findFirst({
       where: { email },
       include: {
         memberships: {
@@ -47,9 +47,9 @@ export class AuthService {
 
     await this.lockoutService.resetFailedAttempts(user.id);
 
-    const activeMemberships = user.memberships.filter(
-      (m) => m.isActive && m.tenant.isActive,
-    );
+    const activeMemberships =
+      user.memberships?.filter((m: any) => m.isActive && m.tenant.isActive) ||
+      [];
     let initialTenantId: string | undefined;
     let initialRoles: string[] = [];
 
@@ -66,7 +66,7 @@ export class AuthService {
       user.isPlatformAdmin,
     );
 
-    const tenantsInfo = activeMemberships.map((m) => ({
+    const tenantsInfo = activeMemberships.map((m: any) => ({
       tenantId: m.tenant.id,
       name: m.tenant.name,
       role: m.role,

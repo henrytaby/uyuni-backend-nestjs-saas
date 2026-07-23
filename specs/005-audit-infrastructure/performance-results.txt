@@ -1,0 +1,8 @@
+--- NFR-001: Access Log + CDC Overhead ---
+Average write time (includes CDC trigger): 2.71ms per request
+
+--- NFR-004: Query Performance with Large Data ---
+Seeding 10,000 access logs...
+Query time for top 100 logs out of 10k+: 10ms (Must be < 2000ms)
+
+Cleaning up...

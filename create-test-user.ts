@@ -28,32 +28,43 @@ async function seedUser() {
     });
 
     // Create the tenant
-    const tenant = await prisma.tenant.upsert({
+    let tenant = await prisma.tenant.findFirst({
       where: { slug: 'test-company' },
-      update: {},
-      create: {
-        name: 'Test Company',
-        slug: 'test-company',
-        isActive: true,
-        planId: plan.id,
-      },
     });
+    if (!tenant) {
+      tenant = await prisma.tenant.create({
+        data: {
+          name: 'Test Company',
+          slug: 'test-company',
+          isActive: true,
+          planId: plan.id,
+        },
+      });
+    }
 
     // Create the user
-    const user = await prisma.user.upsert({
+    let user = await prisma.user.findFirst({
       where: { email: 'test@uyuni.dev' },
-      update: { passwordHash },
-      create: {
-        email: 'test@uyuni.dev',
-        passwordHash,
-        firstName: 'Test',
-        lastName: 'User',
-        isPlatformAdmin: false,
-        isVerified: true,
-        failedLoginAttempts: 0,
-        isActive: true,
-      },
     });
+    if (user) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash },
+      });
+    } else {
+      user = await prisma.user.create({
+        data: {
+          email: 'test@uyuni.dev',
+          passwordHash,
+          firstName: 'Test',
+          lastName: 'User',
+          isPlatformAdmin: false,
+          isVerified: true,
+          failedLoginAttempts: 0,
+          isActive: true,
+        },
+      });
+    }
 
     // Link user to tenant
     await prisma.tenantUser.upsert({

@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { InternalServerErrorException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { TenantContextService } from '../../../common/context/tenant-context.js';
+import { convertToSoftDelete } from '../../../common/utils/soft-delete.js';
 
 /**
  * Per-request flag indicating the current async context is already running
@@ -112,11 +113,16 @@ export function tenantScopedExtension(
               if (isPlatformAdmin) {
                 await tx.$executeRaw`SELECT set_config('app.is_platform_admin', 'true', true)`;
               }
+              // Convert soft-delete operation names before calling the inner transaction
+              let actualOperation = operation;
+              if (operation === 'delete') actualOperation = 'update';
+              if (operation === 'deleteMany') actualOperation = 'updateMany';
+
               // Re-enter the extension on the transactional client; the
               // insideTenantTx flag short-circuits to query(modifiedArgs),
               // which is now bound to `tx`.
               return insideTenantTx.run(true, () =>
-                tx[model][operation](modifiedArgs),
+                tx[model][actualOperation](modifiedArgs),
               );
             });
           },
@@ -199,7 +205,8 @@ function injectWriteContext(
         where.createdById = userId;
       }
       modified.where = where;
-      break;
+
+      return convertToSoftDelete(modified, userId) as Record<string, unknown>;
     }
   }
 
@@ -217,5 +224,14 @@ function injectReadFilter(
   if (scopeFilter === 'OWN' && userId) {
     where.createdById = userId;
   }
-  return { ...args, where };
+
+  if (args.includeDeleted !== true && args.includeDeleted !== 'true') {
+    where.isActive = true;
+  }
+  const cleanArgs = { ...args, where };
+  if ('includeDeleted' in cleanArgs) {
+    delete (cleanArgs as any).includeDeleted;
+  }
+
+  return cleanArgs;
 }

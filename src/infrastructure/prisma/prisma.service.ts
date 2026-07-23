@@ -10,6 +10,9 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { ConfigService } from '@nestjs/config';
 import { TenantContextService } from '../../common/context/tenant-context.js';
 import { tenantScopedExtension } from './extensions/tenant-scoped.extension.js';
+import { appendOnlyExtension } from './extensions/append-only.extension.js';
+import { auditColumnsExtension } from './extensions/audit-columns.extension.js';
+import { cdcExtension } from './extensions/cdc.extension.js';
 import {
   TENANT_SCOPED_MODELS,
   DEFAULT_TENANT_SCOPED_MODELS,
@@ -31,12 +34,11 @@ export class PrismaService
     const url = configService.get<string>('DATABASE_URL');
     const adapter = new PrismaPg({ connectionString: url });
     super({ adapter });
-    return this.$extends(
-      tenantScopedExtension(
-        tenantContextService,
-        tenantScopedModels ?? DEFAULT_TENANT_SCOPED_MODELS,
-      ),
-    ) as this;
+    const models = tenantScopedModels ?? DEFAULT_TENANT_SCOPED_MODELS;
+    return this.$extends(tenantScopedExtension(tenantContextService, models))
+      .$extends(auditColumnsExtension(tenantContextService, models))
+      .$extends(cdcExtension(tenantContextService, models))
+      .$extends(appendOnlyExtension()) as this;
   }
 
   async onModuleInit(): Promise<void> {

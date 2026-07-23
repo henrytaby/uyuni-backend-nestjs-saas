@@ -24,6 +24,12 @@ enum PermissionScope {
   OWN
 }
 
+enum ChangeAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
 model Plan {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name         String   @unique
@@ -47,25 +53,27 @@ model Plan {
 }
 
 model Tenant {
-  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  planId            String       @map("plan_id") @db.Uuid
+  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  planId            String         @map("plan_id") @db.Uuid
   name              String
-  slug              String       @unique
-  paymentState      PaymentState @default(ACTIVO) @map("payment_state")
-  subscriptionStart DateTime?    @map("subscription_start")
-  subscriptionEnd   DateTime?    @map("subscription_end")
-  isActive          Boolean      @default(true) @map("is_active")
-  createdAt         DateTime     @default(now()) @map("created_at")
-  updatedAt         DateTime     @updatedAt @map("updated_at")
-  createdById       String?      @map("created_by_id") @db.Uuid
-  updatedById       String?      @map("updated_by_id") @db.Uuid
-  deletedById       String?      @map("deleted_by_id") @db.Uuid
-  plan              Plan         @relation(fields: [planId], references: [id])
-  createdBy         User?        @relation("TenantCreatedBy", fields: [createdById], references: [id])
-  updatedBy         User?        @relation("TenantUpdatedBy", fields: [updatedById], references: [id])
-  deletedBy         User?        @relation("TenantDeletedBy", fields: [deletedById], references: [id])
+  slug              String
+  paymentState      PaymentState   @default(ACTIVO) @map("payment_state")
+  subscriptionStart DateTime?      @map("subscription_start")
+  subscriptionEnd   DateTime?      @map("subscription_end")
+  isActive          Boolean        @default(true) @map("is_active")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  createdById       String?        @map("created_by_id") @db.Uuid
+  updatedById       String?        @map("updated_by_id") @db.Uuid
+  deletedById       String?        @map("deleted_by_id") @db.Uuid
+  plan              Plan           @relation(fields: [planId], references: [id])
+  createdBy         User?          @relation("TenantCreatedBy", fields: [createdById], references: [id])
+  updatedBy         User?          @relation("TenantUpdatedBy", fields: [updatedById], references: [id])
+  deletedBy         User?          @relation("TenantDeletedBy", fields: [deletedById], references: [id])
   members           TenantUser[]
   roles             Role[]
+  accessLogs        AccessLog[]
+  changeRecords     ChangeRecord[]
 
   @@index([planId])
   @@map("tenants")
@@ -73,7 +81,7 @@ model Tenant {
 
 model User {
   id                     String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email                  String           @unique
+  email                  String
   passwordHash           String           @map("password_hash")
   firstName              String?          @map("first_name")
   lastName               String?          @map("last_name")
@@ -112,6 +120,14 @@ model User {
   roleUpdated            Role[]           @relation("RoleUpdatedBy")
   roleDeleted            Role[]           @relation("RoleDeletedBy")
   roleAssignmentAssigned RoleAssignment[] @relation("RoleAssignmentAssignedBy")
+  accessLogs             AccessLog[]
+  changeRecords          ChangeRecord[]
+  permissionCreated      Permission[]     @relation("PermissionCreatedBy")
+  permissionUpdated      Permission[]     @relation("PermissionUpdatedBy")
+  permissionDeleted      Permission[]     @relation("PermissionDeletedBy")
+  roleAssignmentCreated  RoleAssignment[] @relation("RoleAssignmentCreatedBy")
+  roleAssignmentUpdated  RoleAssignment[] @relation("RoleAssignmentUpdatedBy")
+  roleAssignmentDeleted  RoleAssignment[] @relation("RoleAssignmentDeletedBy")
 
   @@map("users")
 }
@@ -185,21 +201,27 @@ model Role {
   permissions     Permission[]
   roleAssignments RoleAssignment[]
 
-  @@unique([tenantId, name])
   @@index([tenantId])
   @@map("roles")
 }
 
 model Permission {
-  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  roleId    String           @map("role_id") @db.Uuid
-  module    String
-  action    PermissionAction
-  scope     PermissionScope  @default(OWN)
-  createdAt DateTime         @default(now()) @map("created_at")
-  updatedAt DateTime         @updatedAt @map("updated_at")
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roleId      String           @map("role_id") @db.Uuid
+  module      String
+  action      PermissionAction
+  scope       PermissionScope  @default(OWN)
+  isActive    Boolean          @default(true) @map("is_active")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  createdById String?          @map("created_by_id") @db.Uuid
+  updatedById String?          @map("updated_by_id") @db.Uuid
+  deletedById String?          @map("deleted_by_id") @db.Uuid
 
-  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  role      Role  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  createdBy User? @relation("PermissionCreatedBy", fields: [createdById], references: [id])
+  updatedBy User? @relation("PermissionUpdatedBy", fields: [updatedById], references: [id])
+  deletedBy User? @relation("PermissionDeletedBy", fields: [deletedById], references: [id])
 
   @@unique([roleId, module, action])
   @@index([roleId])
@@ -215,13 +237,62 @@ model RoleAssignment {
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
+  createdById  String?  @map("created_by_id") @db.Uuid
+  updatedById  String?  @map("updated_by_id") @db.Uuid
+  deletedById  String?  @map("deleted_by_id") @db.Uuid
 
   tenantUser TenantUser @relation(fields: [tenantUserId], references: [id], onDelete: Cascade)
   role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
   assignedBy User?      @relation("RoleAssignmentAssignedBy", fields: [assignedById], references: [id])
+  createdBy  User?      @relation("RoleAssignmentCreatedBy", fields: [createdById], references: [id])
+  updatedBy  User?      @relation("RoleAssignmentUpdatedBy", fields: [updatedById], references: [id])
+  deletedBy  User?      @relation("RoleAssignmentDeletedBy", fields: [deletedById], references: [id])
 
   @@unique([tenantUserId, roleId])
   @@index([tenantUserId])
   @@index([roleId])
   @@map("role_assignments")
+}
+
+model AccessLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  method     String
+  route      String
+  statusCode Int      @map("status_code")
+  ip         String
+  userAgent  String?  @map("user_agent")
+  userId     String?  @map("user_id") @db.Uuid
+  tenantId   String?  @map("tenant_id") @db.Uuid
+  requestId  String   @map("request_id")
+  durationMs Int      @map("duration_ms")
+  timestamp  DateTime @default(now())
+
+  user   User?   @relation(fields: [userId], references: [id])
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, timestamp(sort: Desc)])
+  @@index([requestId])
+  @@index([userId, timestamp(sort: Desc)])
+  @@map("access_logs")
+}
+
+model ChangeRecord {
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  entityType String       @map("entity_type")
+  entityId   String       @map("entity_id") @db.Uuid
+  action     ChangeAction
+  oldValue   Json?        @map("old_value")
+  newValue   Json?        @map("new_value")
+  actorId    String?      @map("actor_id") @db.Uuid
+  tenantId   String?      @map("tenant_id") @db.Uuid
+  requestId  String       @map("request_id")
+  timestamp  DateTime     @default(now())
+
+  actor  User?   @relation(fields: [actorId], references: [id])
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, entityType, entityId])
+  @@index([requestId])
+  @@index([tenantId, timestamp(sort: Desc)])
+  @@map("change_records")
 }

@@ -16,6 +16,8 @@ import { RbacModule } from './modules/rbac/rbac.module.js';
 import { PermissionsGuard } from './common/guards/permissions.guard.js';
 import { OwnershipScopeInterceptor } from './common/interceptors/ownership-scope.interceptor.js';
 import { SuperadminAuditInterceptor } from './common/interceptors/superadmin-audit.interceptor.js';
+import { AccessLogInterceptor } from './common/interceptors/access-log.interceptor.js';
+import { AuditModule } from './modules/audit/audit.module.js';
 
 @Module({
   imports: [
@@ -38,6 +40,7 @@ import { SuperadminAuditInterceptor } from './common/interceptors/superadmin-aud
     TenancyModule,
     AuthModule,
     RbacModule,
+    AuditModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -47,6 +50,7 @@ import { SuperadminAuditInterceptor } from './common/interceptors/superadmin-aud
     { provide: APP_GUARD, useClass: PlatformAdminGuard },
     { provide: APP_INTERCEPTOR, useClass: OwnershipScopeInterceptor },
     { provide: APP_INTERCEPTOR, useClass: SuperadminAuditInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: AccessLogInterceptor },
   ],
 })
 export class AppModule implements NestModule {

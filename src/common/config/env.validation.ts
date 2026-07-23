@@ -19,6 +19,13 @@ const envSchema = z.object({
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])
     .default('info'),
+  AUDIT_RETENTION_DAYS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .nullable()
+    .default(null),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;
