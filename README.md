@@ -1,6 +1,18 @@
-# Uyuni SaaS Backend
+<p align="center">
+  <img src="public/images/logo/logo-01.png" alt="Uyuni Logo" width="320" />
+</p>
 
-NestJS 11 backend for the Uyuni SaaS platform.
+<h1 align="center">Uyuni SaaS Backend (NestJS Enterprise)</h1>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/NestJS-v11+-E0234E.svg" alt="NestJS Version" />
+  <img src="https://img.shields.io/badge/Prisma-v7.8+-2D3748.svg" alt="Prisma Version" />
+  <img src="https://img.shields.io/badge/PostgreSQL-v16+-336791.svg" alt="PostgreSQL Version" />
+  <img src="https://img.shields.io/badge/Architecture-Clean%20Architecture-blue" alt="Architecture" />
+  <img src="https://img.shields.io/badge/License-MIT-green" alt="License" />
+</p>
+
+Bienvenido a **Uyuni SaaS Backend**, un backend empresarial moderno y altamente escalable construido con **NestJS v11**, **Prisma ORM** y **PostgreSQL**. Diseñado para soportar múltiples inquilinos (multi-tenancy) y siguiendo los principios de **Clean Architecture** e integrando las mejores prácticas de seguridad.
 
 ## Prerequisites
 
