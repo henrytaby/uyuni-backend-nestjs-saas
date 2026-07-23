@@ -1,6 +1,6 @@
 # Generic Repository & DataTables - Validation Guide
 
-This document outlines the validation procedures for the Generic Repository and DataTables feature (Phase 1). It focuses on verifying end-to-end functionality after implementation.
+This document outlines the validation procedures for the Generic Repository and DataTables feature (post-implementation). It focuses on verifying end-to-end functionality after implementation.
 
 See [Data Model](data-model.md) and [API Contracts](contracts/datatable-api.md) for implementation details.
 

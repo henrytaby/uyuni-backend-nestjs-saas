@@ -60,7 +60,7 @@
 | **Filter Representation** | JSON-encoded string in query params, parsed/validated in repository. |
 | **Multi-Column Sort** | JSON array `sort` param (max 3), supersedes `sortField`/`sortOrder`. |
 | **Sort/Filter Validation** | Runtime validation in repository; throws `BadRequestException`. |
-| **includeDeleted & RBAC** | Boolean in DTO; controller handles `@RequirePermissions`, repository handles data. |
+| **includeDeleted & RBAC** | SUPERSEDED — ver Decisión 6: IncludeDeletedInterceptor arquitectónico + @AllowIncludeDeleted(). |
 | **Parallel Queries** | Use `Promise.all` for `findMany` and `count` under ALS transaction context. |
 | **Default Sort** | `createdAt DESC` with optional per-entity override. |
 | **Page Size Capping** | Max 100 globally, bounded by `Math.min(dto, config)`. |

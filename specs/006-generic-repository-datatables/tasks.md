@@ -4,7 +4,7 @@
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: Tests are included in the Polish phase as per typical infrastructure module development, though TDD could be applied per phase.
+**Tests**: MVP approach requires unit and anti-leakage tests during Phase 4. Refactoring and performance tests are in the Polish phase.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -67,9 +67,10 @@ Since this is an infrastructure feature in an existing project, setup is minimal
 
 ### Implementation for User Story 3
 
-- [ ] T011 [P] [US3] Create `@AllowIncludeDeleted()` decorator in `src/common/decorators/allow-include-deleted.decorator.ts`
-- [ ] T012 [US3] Create `IncludeDeletedInterceptor` in `src/common/interceptors/include-deleted.interceptor.ts` to strip the parameter if the route lacks the decorator or the user lacks the `audit:read` permission
-- [ ] T013 [US3] Ensure `findAll()` in `src/common/repository/tenant-scoped.repository.ts` passes the `includeDeleted: true` Prisma argument (now architecturally secured)
+- [ ] T011 [US3] Add a task to explicitly register the entity in `TENANT_SCOPED_MODELS` inside `src/infrastructure/prisma/extensions/tenant-scoped-models.ts` or via provider override in the consumer's module (e.g., `{ provide: 'TENANT_SCOPED_MODELS', useFactory: (def: ReadonlySet<string>) => new Set([...def, 'Client']), inject: ['DEFAULT_TENANT_SCOPED_MODELS'] }`). Without this, the Prisma extension bypasses it, and FR-006, FR-007, and FR-014 will fail silently, causing cross-tenant leaks.
+- [ ] T012 [P] [US3] Create `@AllowIncludeDeleted()` decorator in `src/common/decorators/allow-include-deleted.decorator.ts`
+- [ ] T013 [US3] Create `IncludeDeletedInterceptor` in `src/common/interceptors/include-deleted.interceptor.ts` to strip the parameter if the route lacks the decorator or the user lacks the `audit:read` permission
+- [ ] T014 [US3] Ensure `findAll()` in `src/common/repository/tenant-scoped.repository.ts` passes the `includeDeleted: true` Prisma argument (now architecturally secured)
 
 **Checkpoint**: User Story 1 & 3 are fully operational (MVP Core).
 
@@ -83,8 +84,8 @@ Since this is an infrastructure feature in an existing project, setup is minimal
 
 ### Implementation for User Story 2
 
-- [ ] T014 [P] [US2] Implement `buildSearchCondition()` method in `src/common/repository/tenant-scoped.repository.ts` (using `contains` and `mode: 'insensitive'` across all `config.searchableFields`)
-- [ ] T015 [US2] Create or update `buildWhere()` method in `src/common/repository/tenant-scoped.repository.ts` to incorporate the search conditions
+- [ ] T015 [P] [US2] Implement `buildSearchCondition()` method in `src/common/repository/tenant-scoped.repository.ts` (using `contains` and `mode: 'insensitive'` across all `config.searchableFields`)
+- [ ] T016 [US2] Create or update `buildWhere()` method in `src/common/repository/tenant-scoped.repository.ts` to incorporate the search conditions
 
 **Checkpoint**: Paginated lists can now be globally searched.
 
@@ -98,8 +99,8 @@ Since this is an infrastructure feature in an existing project, setup is minimal
 
 ### Implementation for User Story 4
 
-- [ ] T016 [US4] Implement `buildFilterConditions()` in `src/common/repository/tenant-scoped.repository.ts` to parse JSON, validate keys against `config.filterableFields`, and map operators (`equals`, `contains`, `gte`, `lte`, `in`)
-- [ ] T017 [US4] Update `buildWhere()` in `src/common/repository/tenant-scoped.repository.ts` to merge search conditions (AND logic) with parsed filter conditions
+- [ ] T017 [US4] Implement `buildFilterConditions()` in `src/common/repository/tenant-scoped.repository.ts` to parse JSON, validate keys against `config.filterableFields`, and map operators (`equals`, `contains`, `gte`, `lte`, `in`)
+- [ ] T018 [US4] Update `buildWhere()` in `src/common/repository/tenant-scoped.repository.ts` to merge search conditions (AND logic) with parsed filter conditions
 
 **Checkpoint**: All user stories should now be independently functional. The repository is complete.
 
@@ -109,13 +110,14 @@ Since this is an infrastructure feature in an existing project, setup is minimal
 
 **Purpose**: Improvements that affect multiple user stories, migration, and testing.
 
-- [ ] T018 [P] Refactor existing `DataTableRequestDto` in `src/modules/tenancy/dto/plan.dto.ts` to import/extend from `src/common/dto/datatable-request.dto.ts`
-- [ ] T019 [P] Export all DTOs and classes via an index file `src/common/repository/index.ts`
-- [ ] T020 Write unit tests for `TenantScopedRepository` in `test/unit/common/repository/tenant-scoped.repository.spec.ts`
-- [ ] T021 Write e2e contract test for datatables in `test/e2e/datatable.e2e-spec.ts`
-- [ ] T022 Write automated anti-leakage tests in `test/e2e/tenant-isolation.e2e-spec.ts` proving cross-tenant and ownership isolation invariants. **CRITICAL: You MUST ensure the test entity is registered in `TENANT_SCOPED_MODELS` (in `tenant-scoped-models.ts`), otherwise the Prisma extension will bypass it and isolation will fail silently.**
-- [ ] T023 Run performance baselines for pagination and global search using a 100K record seed script to verify NFR-001/NFR-002
-- [ ] T024 Run quickstart.md validation scenarios to ensure complete success
+- [ ] T019 [P] Refactor existing `DataTableRequestDto` in `src/modules/tenancy/dto/plan.dto.ts` to import from `src/common/dto/datatable-request.dto.ts`, AND update the `TenantsController` and `TenantsService` to use this single DTO object instead of receiving query parameters individually (e.g. `@Query('page')`).
+- [ ] T020 [P] Export all DTOs and classes via an index file `src/common/repository/index.ts`
+- [ ] T021 Write unit tests for `TenantScopedRepository` in `test/unit/common/repository/tenant-scoped.repository.spec.ts`
+- [ ] T022 Write e2e contract test for datatables in `test/e2e/datatable.e2e-spec.ts`
+- [ ] T023 Write automated anti-leakage tests in `test/e2e/tenant-isolation.e2e-spec.ts` proving cross-tenant and ownership isolation invariants. **CRITICAL: You MUST ensure the test entity is registered in `TENANT_SCOPED_MODELS` (in `tenant-scoped-models.ts`), otherwise the Prisma extension will bypass it and isolation will fail silently.**
+- [ ] T024 Write a database seed script (`prisma/performance-seed.ts`) capable of generating 100K tenant-scoped records for testing purposes.
+- [ ] T025 Run performance baselines for pagination and global search using the 100K record seed script to verify NFR-001/NFR-002
+- [ ] T026 Run quickstart.md validation scenarios to ensure complete success
 
 ---
 
@@ -132,7 +134,7 @@ Since this is an infrastructure feature in an existing project, setup is minimal
 ### User Story Dependencies
 
 - **US1 (P1)**: Can start after Foundational
-- **US3 (P1)**: Can start after US1 or concurrently with US1
+- **US3 (P1)**: Can start after US1 or concurrently with US1. **Note:** T011 (model registration) is a strict prerequisite for T023 (anti-leakage tests).
 - **US2 (P2)**: Depends on US1 (requires base query structure)
 - **US4 (P2)**: Depends on US1 and US2 (merges into `buildWhere`)
 
@@ -140,7 +142,7 @@ Since this is an infrastructure feature in an existing project, setup is minimal
 
 - All Foundational DTOs and interfaces marked [P] can run in parallel (T002, T003, T004)
 - Helpers like `normalizePagination` and `validateFieldAllowed` can be built concurrently
-- Refactoring existing queries (T016, T017) can be done in parallel with testing
+- Refactoring existing queries (T019) can be done in parallel with testing
 
 ---
 
@@ -152,11 +154,11 @@ Since this is an infrastructure feature in an existing project, setup is minimal
 2. Complete Phase 2: Foundational (CRITICAL)
 3. Complete Phase 3: User Story 1
 4. Complete Phase 4: User Story 3
-5. **STOP and VALIDATE**: Write and execute unit tests (T020) and anti-leakage tests (T022) to prove MVP functionality before proceeding. Do not wait for Phase 7.
+5. **STOP and VALIDATE**: Write and execute unit tests (T021) and anti-leakage tests (T023) to prove MVP functionality before proceeding. Do not wait for Phase 7.
 
 ### Incremental Delivery (TDD Approach)
 
 1. Complete MVP (US1 + US3) + Tests → Foundation ready, secure, and functional
 2. Add User Story 2 (Search) → Write test → Verify
 3. Add User Story 4 (Filters) → Write test → Verify
-4. Execute remaining Polish phase tasks (T018, T019, T021, T023, T024) for refactoring, e2e, and performance baselines.
+4. Execute remaining Polish phase tasks (T019, T020, T022, T024, T025, T026) for refactoring, e2e, and performance baselines.

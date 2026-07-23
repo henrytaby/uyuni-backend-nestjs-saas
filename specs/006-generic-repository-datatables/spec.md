@@ -154,8 +154,7 @@ it is rejected.
   listing the allowed sort fields.
 - Concurrent count and data queries — MUST be consistent (same total count
   as the data result set) within the same request.
-- Filter field is a relation field (e.g., categoryId) — MUST be supported
-  if declared as an allowed filter field.
+- Filter field is a relation field (e.g., categoryId) — MUST be supported if defined as a scalar foreign key (flat field). Nested relation queries (e.g., filtering on `category.name`) are OUT OF SCOPE for v1 MVP.
 - Soft-deleted records (is_active=false) — MUST be excluded from all list
   queries by default. Auditors MAY include them via an explicit
   include_deleted=true parameter. This MUST be architecturally enforced via
@@ -182,7 +181,7 @@ it is rejected.
   fields using case-insensitive partial matching (OR logic across fields).
 - **FR-006**: System MUST automatically enforce tenant isolation in all
   queries via the existing tenant-scoped infrastructure (tenant_id
-  injection from TenantContext).
+  injection from TenantContext). *Note: The developer MUST explicitly register the entity in `TENANT_SCOPED_MODELS` for this to take effect.*
 - **FR-007**: System MUST automatically enforce ownership scoping via the
   existing RBAC scopeFilter from TenantContext. When scopeFilter is 'ANY',
   all tenant records are returned. When scopeFilter is 'OWN', only records

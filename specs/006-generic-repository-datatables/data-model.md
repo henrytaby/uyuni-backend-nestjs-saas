@@ -15,7 +15,7 @@ This is an INFRASTRUCTURE feature — it does NOT define new database models/tab
 | `sort` | `string` | No | `@IsOptional()`, `@IsString()`, `@MaxLength(2000)` | JSON array of `{ field: string, order: 'asc' \| 'desc' }` for multi-column sort, max 3 (validated as JSON in repository) |
 | `searchTerm` | `string` | No | `@IsOptional()`, `@IsString()`, `@MaxLength(2000)` | Global search string, case-insensitive partial matching |
 | `filters` | `string` | No | `@IsOptional()`, `@IsString()`, `@MaxLength(2000)` | JSON-encoded object mapping field names to filter conditions (validated as JSON in repository) |
-| `includeDeleted` | `boolean` | No | `@IsOptional()`, `@Type(() => Boolean)`, `@IsBoolean()` | Include soft-deleted records, default false (requires `audit:read` permission) |
+| `includeDeleted` | `boolean` | No | `@IsOptional()`, `@Type(() => Boolean)`, `@IsBoolean()` | Include soft-deleted records. **Untrusted until `IncludeDeletedInterceptor`**. The repository explicitly maps this to `prismaArgs.includeDeleted = (dto.includeDeleted === true)`. The `tenant-scoped.extension` deletes the key from the Prisma payload before sending it to the database. |
 
 *Note: All fields are decorated with `@ApiPropertyOptional()` for Swagger.*
 
@@ -52,7 +52,7 @@ This is an INFRASTRUCTURE feature — it does NOT define new database models/tab
 ```typescript
 export interface FilterCondition {
   equals?: string | number | boolean;
-  contains?: string;
+  contains?: string; // 'insensitive' mode is enforced by the repository
   gte?: string | number;  // >= (dates as ISO strings)
   lte?: string | number;  // <= (dates as ISO strings)
   in?: (string | number)[];  // IN array
@@ -76,9 +76,9 @@ export interface SortItem {
 
 ```typescript
 export interface RepositoryConfig {
-  searchableFields: readonly string[];   // Fields for global search (OR logic, case-insensitive contains)
-  filterableFields: readonly string[];   // Fields allowed in column filters
-  sortableFields: readonly string[];     // Fields allowed in sort
+  searchableFields: readonly string[];   // Fields for global search (OR logic, case-insensitive contains, flat string fields only)
+  filterableFields: readonly string[];   // Fields allowed in column filters (flat fields only, no relations)
+  sortableFields: readonly string[];     // Fields allowed in sort (flat fields only, no relations)
   defaultSort: SortItem;                 // Default when no sort specified (default: { field: 'createdAt', order: 'desc' })
   maxPageSize?: number;                  // Override global 100 cap per entity
   defaultPageSize?: number;              // Override global 25 default per entity

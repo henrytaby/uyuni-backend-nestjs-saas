@@ -47,11 +47,11 @@ isolation, soft-delete enforcement, and audit column injection.
 
 | Principle | Status | Notes |
 |---|---|---|
-| I. Strict Multi-Tenant Isolation | ✅ PASS | Repository delegates to existing `tenant-scoped.extension.ts` which auto-injects `tenantId` via `set_config` + interactive transactions. No manual tenant filtering in repository code. |
+| I. Strict Multi-Tenant Isolation | ⚠️ CONDITIONAL | Repository delegates to existing `tenant-scoped.extension.ts`. **CRITICAL**: Developer must explicitly register domain models in `TENANT_SCOPED_MODELS`, otherwise isolation will fail silently. |
 | II. Granular RBAC | ✅ PASS | Ownership scoping (`ANY`/`OWN`) leverages existing `OwnershipScopeInterceptor` which mutates `TenantContext.scopeFilter`. The tenant-scoped extension reads this to inject `createdById` filter. Repository does not duplicate this logic. |
 | III. Subscription-Driven Feature Gating | ✅ N/A | Infrastructure module — not a gated domain feature. Available to all plan tiers. |
 | IV. Immutable Audit Trail | ✅ PASS | Audit columns (`createdById`, `updatedById`) auto-injected by `audit-columns.extension.ts`. Soft-delete (`isActive=false`) enforced by `tenant-scoped.extension.ts`. No manual audit logic needed. |
-| V. API-First Modular Architecture | ✅ PASS | **This feature directly implements** the constitution's mandate: "`TenantScopedRepository<T>` MUST encapsulate pagination, sorting, global search, and tenant isolation. All list endpoints MUST accept a standardized `DataTableRequestDto` and return `{ data: T[], total: number }`." DTOs exposed via OpenAPI/Swagger. |
+| V. API-First Modular Architecture | ✅ PASS | **This feature implements and updates** the constitution's mandate: All list endpoints MUST accept a standardized `DataTableRequestDto` and return `{ data: T[], meta: DataTableMetaDto }`. (Note: This updates the old `{data, total}` signature to support advanced metadata). |
 
 **Gate Result**: ✅ ALL GATES PASS — No violations. Proceed to Phase 0.
 
@@ -116,8 +116,9 @@ the common location).
 
 ## Complexity Tracking
 
-> No Constitution violations detected — this table is intentionally empty.
+> This table records intentional architectural trade-offs made in the design phase.
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|--------------------------------------|
-| — | — | — |
+| **Clean Architecture Layer Crossing**: `TenantScopedRepository` receives `DataTableRequestDto` (Presentation DTO) directly. | Avoids excessive mapping boilerplate (the "mapping tax") for generic CRUD list operations. | Mapping DTO to a pure `QueryModel` in every service creates redundant code for identical structures. Trade-off: DRY > Layer purity (Prisma is shared infra). |
+| **SOLID (Open/Closed)**: `TenantScopedRepository` contains 7 protected methods, making it rigid to extend with new filter operators. | Keeps Phase 1 MVP simple and contained in a single class without premature abstraction. | Extracting `WhereBuilder` and `OrderByBuilder` collaborators is a future enhancement; it adds unnecessary complexity for the initial baseline. |
