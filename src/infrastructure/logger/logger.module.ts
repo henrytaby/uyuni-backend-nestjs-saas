@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { LevelWithSilent } from 'pino';
+import { requestContextStorage } from '../../common/interceptors/request-context.interceptor.js';
 
 @Module({
   imports: [
@@ -50,15 +51,14 @@ import type { LevelWithSilent } from 'pino';
                 statusCode: res.statusCode,
               }),
             },
-            customProps: (req: IncomingMessage) => ({
-              requestId: (req as { id?: string }).id ?? null,
-              ip:
-                (req as { ip?: string }).ip ??
-                req.socket?.remoteAddress ??
-                null,
-              tenantId: null,
-              userId: null,
-            }),
+            customProps: () => {
+              const store = requestContextStorage.getStore();
+              return {
+                requestId: store?.requestId ?? null,
+                tenantId: store?.tenantId ?? null,
+                userId: store?.userId ?? null,
+              };
+            },
           },
         };
       },

@@ -14,7 +14,10 @@ export class SampleDto {
   name!: string;
 }
 
+import { Public } from '../../src/common/decorators/public.decorator';
+
 @ApiTags('test-validation')
+@Public()
 @Controller('test-validation')
 export class ValidationSampleController {
   @Post()

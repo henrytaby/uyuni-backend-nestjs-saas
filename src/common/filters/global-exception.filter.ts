@@ -107,6 +107,33 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       return { statusCode: status, message, error };
     }
 
+    if (
+      exception instanceof Error &&
+      exception.name === 'PrismaClientKnownRequestError'
+    ) {
+      const prismaError = exception as {
+        code?: string;
+        meta?: { target?: string[] };
+      };
+      if (prismaError.code === 'P2002') {
+        const target = prismaError.meta?.target ?? [];
+        const field = target.join(', ');
+        return {
+          statusCode: HttpStatus.CONFLICT,
+          message: `Unique constraint violation on ${field}`,
+          error: 'Conflict',
+        };
+      }
+      // P2025 (record not found) → 404 (not 403)
+      if (prismaError.code === 'P2025') {
+        return {
+          statusCode: HttpStatus.NOT_FOUND,
+          message: 'Record not found',
+          error: 'Not Found',
+        };
+      }
+    }
+
     const message =
       exception instanceof Error ? exception.message : String(exception);
     return {

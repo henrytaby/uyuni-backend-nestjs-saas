@@ -7,11 +7,13 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { PrismaHealthIndicator } from './indicators/prisma-health.indicator.js';
+import { Public } from '../../common/decorators/public.decorator.js';
 
 interface ReadinessResponse extends Partial<HealthCheckResult> {
   timestamp: string;
 }
 
+@Public()
 @ApiTags('health')
 @SkipThrottle()
 @Controller('health')
