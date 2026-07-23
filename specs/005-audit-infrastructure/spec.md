@@ -4,7 +4,9 @@
 
 **Created**: 2026-07-07
 
-**Status**: Draft
+**Status**: Ready
+
+**Updated**: 2026-07-22 (Enterprise Standards Alignment)
 
 **Input**: User description: "Implement immutable audit trail with access log interception, Change Data Capture (CDC), soft-delete enforcement, and automatic audit column injection via Prisma extension."
 
@@ -107,6 +109,23 @@ verify updated_by_id is set automatically.
 - Platform superadmin performing a cross-tenant action — the audit columns
   MUST reflect the superadmin's user_id, not the tenant's.
 
+---
+
+### User Story 4 - Audit Trail Querying & Correlation (Priority: P2)
+
+An auditor or tenant admin can query the audit trail to investigate incidents. They can search access logs by date range, user, and route. They can view the full change history of any entity. Every CDC entry includes a `requestId` that correlates it to the access log entry that triggered the change, enabling full request-to-mutation traceability.
+
+**Why this priority**: Without a query interface, audit data exists but is inaccessible to the people who need it. Request-to-mutation correlation is required for forensic investigations and SOC2 evidence.
+
+**Independent Test**: Make 3 requests that modify data. As an auditor, query access logs filtered by date range. Pick one access log entry, use its `requestId` to find the corresponding CDC entries.
+
+**Acceptance Scenarios**:
+
+1. **Given** an auditor, **When** they query access logs with filters (date range, userId, route), **Then** only matching entries for their tenant are returned with pagination.
+2. **Given** an auditor, **When** they query CDC records for a specific entity by ID, **Then** the full change history is returned in chronological order.
+3. **Given** a CDC entry, **When** the auditor reads its `requestId`, **Then** it matches exactly one access log entry, enabling full traceability.
+4. **Given** a non-auditor user, **When** they attempt to query audit endpoints, **Then** access is denied (requires `audit:read` permission).
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -133,14 +152,22 @@ verify updated_by_id is set automatically.
   auditors MAY request inclusion via a query parameter.
 - **FR-010**: CDC entries MUST be queryable by entity type, entity ID,
   date range, and actor.
+- **FR-011**: CDC records MUST include a `requestId` field that correlates
+  each mutation to the access log entry that triggered it.
+- **FR-012**: Audit tables (AccessLog, ChangeRecord) MUST be protected at
+  both the application layer (Prisma middleware rejects UPDATE/DELETE) and
+  the database layer (PostgreSQL `REVOKE UPDATE, DELETE` on the tables).
+- **FR-013**: Access log and CDC query endpoints MUST require the
+  `audit:read` RBAC permission and MUST be scoped to the requesting
+  user's tenant.
 
 ### Key Entities
 
 - **AccessLog**: Request record. Attributes: method, route, status code,
-  client IP, user_id, tenant_id, request_id, timestamp.
+  client IP, user_id, tenant_id, request_id, duration_ms, timestamp.
 - **ChangeRecord**: CDC entry. Attributes: entity type, entity ID,
   action (create/update/delete), old_value (JSON), new_value (JSON),
-  actor user_id, tenant_id, timestamp.
+  actor user_id, tenant_id, request_id, timestamp.
 
 ## Success Criteria *(mandatory)*
 
@@ -170,3 +197,18 @@ verify updated_by_id is set automatically.
   This parameter requires the AUDIT module READ permission.
 - Access log retention is assumed to be indefinite. A future feature may
   add retention policies.
+- Expected volume: ~100-500 access log entries per minute at moderate load;
+  CDC entries are proportional to write operations (~10-50 per minute).
+  No partitioning required initially, but indexes on `tenantId` + `timestamp`
+  are mandatory for query performance.
+
+## Dependencies
+
+- **003-authentication**: Provides `userId` from JWT claims for audit column
+  injection and access log attribution.
+- **002-multi-tenancy-core**: Provides `tenantId` from `TenantContextService`
+  (AsyncLocalStorage) for scoping all audit records.
+- **004-rbac**: Provides `audit:read` permission for controlling access to
+  audit query endpoints.
+- **001-foundation-bootstrap**: Provides `requestId` from the global
+  correlation ID middleware for traceability.
