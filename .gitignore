@@ -43,4 +43,4 @@ prisma/*.db-journal
 .kilocode/
 
 # Local tooling caches (agents workflows + node_modules)
-.agents/
+.agents/.kilo
