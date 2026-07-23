@@ -17,6 +17,7 @@ export class TokenService {
     email: string,
     roles: string[] = [],
     tenantId?: string,
+    isPlatformAdmin: boolean = false,
   ) {
     const payload = {
       sub: userId,
@@ -24,6 +25,7 @@ export class TokenService {
       roles,
       tenant_id: tenantId,
       mfa_verified: false,
+      is_platform_admin: isPlatformAdmin,
     };
 
     const accessToken = await this.jwtService.signAsync(payload);
@@ -91,6 +93,7 @@ export class TokenService {
       existingToken.user.email,
       roles,
       tenantId,
+      existingToken.user.isPlatformAdmin,
     );
 
     // Mark old token as revoked and point it to the new token

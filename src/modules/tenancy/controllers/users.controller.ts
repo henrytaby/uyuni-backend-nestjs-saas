@@ -10,18 +10,20 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from '../services/users.service.js';
 import { CreateUserDto, UpdateUserDto, UserQueryDto } from '../dto/user.dto.js';
-import { Public } from '../../../common/decorators/public.decorator.js';
+
 import { RequirePlatformAdmin } from '../../../common/decorators/require-platform-admin.decorator.js';
+import { BypassTenant } from '../../../common/decorators/bypass-tenant.decorator.js';
 
 @ApiTags('users')
+@ApiBearerAuth('bearer')
+@BypassTenant()
 @Controller('tenancy/users')
 export class UsersController {
   constructor(private readonly service: UsersService) {}
 
-  @Public()
   @RequirePlatformAdmin()
   @Post()
   @ApiOperation({ summary: 'Create a user (platform admin)' })
@@ -51,7 +53,6 @@ export class UsersController {
     );
   }
 
-  @Public()
   @Get('me/tenants')
   @ApiOperation({ summary: "List the authenticated user's tenants" })
   @ApiResponse({

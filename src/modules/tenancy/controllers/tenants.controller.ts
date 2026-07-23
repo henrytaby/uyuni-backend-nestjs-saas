@@ -10,7 +10,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { TenantsService } from '../services/tenants.service.js';
 import {
   CreateTenantDto,
@@ -18,8 +18,11 @@ import {
   TenantQueryDto,
 } from '../dto/tenant.dto.js';
 import { RequirePlatformAdmin } from '../../../common/decorators/require-platform-admin.decorator.js';
+import { BypassTenant } from '../../../common/decorators/bypass-tenant.decorator.js';
 
 @ApiTags('tenants')
+@ApiBearerAuth('bearer')
+@BypassTenant()
 @Controller('tenancy/tenants')
 export class TenantsController {
   constructor(private readonly service: TenantsService) {}

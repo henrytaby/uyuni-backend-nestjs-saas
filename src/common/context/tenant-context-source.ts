@@ -29,10 +29,35 @@ export const TENANT_CONTEXT_SOURCE: InjectionToken<TenantContextSource> =
 export const defaultTenantContextSource: TenantContextSource = (
   req: Request,
 ): RawTenantContext => {
-  const jwtPayload = (req as { user?: TenantJwtPayload }).user ?? {};
+  let jwtPayload: any = {};
+
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const payloadPart = token.split('.')[1];
+      if (payloadPart) {
+        const decoded = Buffer.from(payloadPart, 'base64').toString('utf8');
+        jwtPayload = JSON.parse(decoded);
+      }
+    } catch (e) {
+      // Ignore parse errors; JwtAuthGuard will securely reject it later.
+    }
+  }
+
+  // Fallback to req.user for tests or if another middleware populated it
+  if (!jwtPayload.sub && (req as any).user) {
+    const u = (req as any).user;
+    jwtPayload = {
+      tenant_id: u.tenantId ?? u.tenant_id,
+      sub: u.userId ?? u.sub,
+      is_platform_admin: u.isPlatformAdmin ?? u.is_platform_admin,
+    };
+  }
+
   return {
     tenantId: jwtPayload.tenant_id ?? null,
-    userId: jwtPayload.user_id ?? null,
-    isPlatformAdmin: jwtPayload.is_platform_admin ?? false,
+    userId: jwtPayload.sub ?? jwtPayload.user_id ?? null,
+    isPlatformAdmin: jwtPayload.is_platform_admin === true,
   };
 };

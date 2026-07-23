@@ -54,6 +54,7 @@ export class AuthService {
       user.email,
       initialRoles,
       initialTenantId,
+      user.isPlatformAdmin,
     );
 
     const tenantsInfo = activeMemberships.map((m) => ({
@@ -92,7 +93,7 @@ export class AuthService {
   async switchTenantContext(userId: string, email: string, targetTenantId: string) {
     const membership = await this.prisma.tenantUser.findUnique({
       where: { tenantId_userId: { tenantId: targetTenantId, userId } },
-      include: { tenant: true },
+      include: { tenant: true, user: true },
     });
 
     if (!membership || !membership.isActive || !membership.tenant.isActive) {
@@ -104,6 +105,7 @@ export class AuthService {
       email,
       [membership.role],
       targetTenantId,
+      membership.user.isPlatformAdmin,
     );
 
     return {

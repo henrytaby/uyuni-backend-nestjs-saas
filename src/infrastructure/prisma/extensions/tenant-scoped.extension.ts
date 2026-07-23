@@ -102,10 +102,10 @@ export function tenantScopedExtension(
             // (mandatory for RLS under Prisma connection pooling).
             return (client as any).$transaction(async (tx: any) => {
               if (tenantId) {
-                await tx.$executeRaw`SET LOCAL app.tenant_id = ${tenantId}`;
+                await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
               }
               if (isPlatformAdmin) {
-                await tx.$executeRaw`SET LOCAL app.is_platform_admin = 'true'`;
+                await tx.$executeRaw`SELECT set_config('app.is_platform_admin', 'true', true)`;
               }
               // Re-enter the extension on the transactional client; the
               // insideTenantTx flag short-circuits to query(modifiedArgs),
