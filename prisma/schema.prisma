@@ -12,6 +12,18 @@ enum PaymentState {
   SUSPENDIDO
 }
 
+enum PermissionAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+}
+
+enum PermissionScope {
+  ANY
+  OWN
+}
+
 model Plan {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name         String   @unique
@@ -53,69 +65,75 @@ model Tenant {
   updatedBy         User?        @relation("TenantUpdatedBy", fields: [updatedById], references: [id])
   deletedBy         User?        @relation("TenantDeletedBy", fields: [deletedById], references: [id])
   members           TenantUser[]
+  roles             Role[]
 
   @@index([planId])
   @@map("tenants")
 }
 
 model User {
-  id                  String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email               String       @unique
-  passwordHash        String       @map("password_hash")
-  firstName           String?      @map("first_name")
-  lastName            String?      @map("last_name")
-  isPlatformAdmin     Boolean      @default(false) @map("is_platform_admin")
-  isVerified          Boolean      @default(false) @map("is_verified")
-  failedLoginAttempts Int          @default(0) @map("failed_login_attempts")
-  lockedUntil         DateTime?    @map("locked_until")
-  lastLoginAt         DateTime?    @map("last_login_at")
-  isActive            Boolean      @default(true) @map("is_active")
-  createdAt           DateTime     @default(now()) @map("created_at")
-  updatedAt           DateTime     @updatedAt @map("updated_at")
-  createdById         String?      @map("created_by_id") @db.Uuid
-  updatedById         String?      @map("updated_by_id") @db.Uuid
-  deletedById         String?      @map("deleted_by_id") @db.Uuid
-  createdBy           User?        @relation("UserCreatedBy", fields: [createdById], references: [id])
-  updatedBy           User?        @relation("UserUpdatedBy", fields: [updatedById], references: [id])
-  deletedBy           User?        @relation("UserDeletedBy", fields: [deletedById], references: [id])
-  createdUsers        User[]       @relation("UserCreatedBy")
-  updatedUsers        User[]       @relation("UserUpdatedBy")
-  deletedUsers        User[]       @relation("UserDeletedBy")
-  planCreated         Plan[]       @relation("PlanCreatedBy")
-  planUpdated         Plan[]       @relation("PlanUpdatedBy")
-  planDeleted         Plan[]       @relation("PlanDeletedBy")
-  tenantCreated       Tenant[]     @relation("TenantCreatedBy")
-  tenantUpdated       Tenant[]     @relation("TenantUpdatedBy")
-  tenantDeleted       Tenant[]     @relation("TenantDeletedBy")
-  tenantUserCreated   TenantUser[] @relation("TenantUserCreatedBy")
-  tenantUserUpdated   TenantUser[] @relation("TenantUserUpdatedBy")
-  tenantUserDeleted   TenantUser[] @relation("TenantUserDeletedBy")
-  memberships         TenantUser[]
-  refreshTokens       RefreshToken[] @relation("RefreshTokenUser")
-  refreshTokenCreated RefreshToken[] @relation("RefreshTokenCreatedBy")
-  refreshTokenUpdated RefreshToken[] @relation("RefreshTokenUpdatedBy")
-  refreshTokenDeleted RefreshToken[] @relation("RefreshTokenDeletedBy")
+  id                     String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                  String           @unique
+  passwordHash           String           @map("password_hash")
+  firstName              String?          @map("first_name")
+  lastName               String?          @map("last_name")
+  isPlatformAdmin        Boolean          @default(false) @map("is_platform_admin")
+  isVerified             Boolean          @default(false) @map("is_verified")
+  failedLoginAttempts    Int              @default(0) @map("failed_login_attempts")
+  lockedUntil            DateTime?        @map("locked_until")
+  lastLoginAt            DateTime?        @map("last_login_at")
+  isActive               Boolean          @default(true) @map("is_active")
+  createdAt              DateTime         @default(now()) @map("created_at")
+  updatedAt              DateTime         @updatedAt @map("updated_at")
+  createdById            String?          @map("created_by_id") @db.Uuid
+  updatedById            String?          @map("updated_by_id") @db.Uuid
+  deletedById            String?          @map("deleted_by_id") @db.Uuid
+  createdBy              User?            @relation("UserCreatedBy", fields: [createdById], references: [id])
+  updatedBy              User?            @relation("UserUpdatedBy", fields: [updatedById], references: [id])
+  deletedBy              User?            @relation("UserDeletedBy", fields: [deletedById], references: [id])
+  createdUsers           User[]           @relation("UserCreatedBy")
+  updatedUsers           User[]           @relation("UserUpdatedBy")
+  deletedUsers           User[]           @relation("UserDeletedBy")
+  planCreated            Plan[]           @relation("PlanCreatedBy")
+  planUpdated            Plan[]           @relation("PlanUpdatedBy")
+  planDeleted            Plan[]           @relation("PlanDeletedBy")
+  tenantCreated          Tenant[]         @relation("TenantCreatedBy")
+  tenantUpdated          Tenant[]         @relation("TenantUpdatedBy")
+  tenantDeleted          Tenant[]         @relation("TenantDeletedBy")
+  tenantUserCreated      TenantUser[]     @relation("TenantUserCreatedBy")
+  tenantUserUpdated      TenantUser[]     @relation("TenantUserUpdatedBy")
+  tenantUserDeleted      TenantUser[]     @relation("TenantUserDeletedBy")
+  memberships            TenantUser[]
+  refreshTokens          RefreshToken[]   @relation("RefreshTokenUser")
+  refreshTokenCreated    RefreshToken[]   @relation("RefreshTokenCreatedBy")
+  refreshTokenUpdated    RefreshToken[]   @relation("RefreshTokenUpdatedBy")
+  refreshTokenDeleted    RefreshToken[]   @relation("RefreshTokenDeletedBy")
+  roleCreated            Role[]           @relation("RoleCreatedBy")
+  roleUpdated            Role[]           @relation("RoleUpdatedBy")
+  roleDeleted            Role[]           @relation("RoleDeletedBy")
+  roleAssignmentAssigned RoleAssignment[] @relation("RoleAssignmentAssignedBy")
 
   @@map("users")
 }
 
 model TenantUser {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId    String   @map("tenant_id") @db.Uuid
-  userId      String   @map("user_id") @db.Uuid
-  role        String   @default("EMPLEADO")
-  isActive    Boolean  @default(true) @map("is_active")
-  joinedAt    DateTime @default(now()) @map("joined_at")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  createdById String?  @map("created_by_id") @db.Uuid
-  updatedById String?  @map("updated_by_id") @db.Uuid
-  deletedById String?  @map("deleted_by_id") @db.Uuid
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
-  user        User     @relation(fields: [userId], references: [id])
-  createdBy   User?    @relation("TenantUserCreatedBy", fields: [createdById], references: [id])
-  updatedBy   User?    @relation("TenantUserUpdatedBy", fields: [updatedById], references: [id])
-  deletedBy   User?    @relation("TenantUserDeletedBy", fields: [deletedById], references: [id])
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String           @map("tenant_id") @db.Uuid
+  userId          String           @map("user_id") @db.Uuid
+  role            String           @default("EMPLEADO")
+  isActive        Boolean          @default(true) @map("is_active")
+  joinedAt        DateTime         @default(now()) @map("joined_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  createdById     String?          @map("created_by_id") @db.Uuid
+  updatedById     String?          @map("updated_by_id") @db.Uuid
+  deletedById     String?          @map("deleted_by_id") @db.Uuid
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  user            User             @relation(fields: [userId], references: [id])
+  createdBy       User?            @relation("TenantUserCreatedBy", fields: [createdById], references: [id])
+  updatedBy       User?            @relation("TenantUserUpdatedBy", fields: [updatedById], references: [id])
+  deletedBy       User?            @relation("TenantUserDeletedBy", fields: [deletedById], references: [id])
+  roleAssignments RoleAssignment[]
 
   @@unique([tenantId, userId])
   @@index([userId])
@@ -144,4 +162,66 @@ model RefreshToken {
   @@index([userId])
   @@index([tokenHash])
   @@map("refresh_tokens")
+}
+
+model Role {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  description String?
+  tenantId    String?  @map("tenant_id") @db.Uuid
+  isSystem    Boolean  @default(false) @map("is_system")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdById String?  @map("created_by_id") @db.Uuid
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  deletedById String?  @map("deleted_by_id") @db.Uuid
+
+  tenant    Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("RoleCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?   @relation("RoleUpdatedBy", fields: [updatedById], references: [id])
+  deletedBy User?   @relation("RoleDeletedBy", fields: [deletedById], references: [id])
+
+  permissions     Permission[]
+  roleAssignments RoleAssignment[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("roles")
+}
+
+model Permission {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roleId    String           @map("role_id") @db.Uuid
+  module    String
+  action    PermissionAction
+  scope     PermissionScope  @default(OWN)
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, module, action])
+  @@index([roleId])
+  @@map("permissions")
+}
+
+model RoleAssignment {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantUserId String   @map("tenant_user_id") @db.Uuid
+  roleId       String   @map("role_id") @db.Uuid
+  assignedAt   DateTime @default(now()) @map("assigned_at")
+  assignedById String?  @map("assigned_by_id") @db.Uuid
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenantUser TenantUser @relation(fields: [tenantUserId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedBy User?      @relation("RoleAssignmentAssignedBy", fields: [assignedById], references: [id])
+
+  @@unique([tenantUserId, roleId])
+  @@index([tenantUserId])
+  @@index([roleId])
+  @@map("role_assignments")
 }

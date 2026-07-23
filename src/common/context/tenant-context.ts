@@ -6,6 +6,7 @@ export interface TenantContext {
   userId: string | null;
   isPlatformAdmin: boolean;
   requestId: string;
+  scopeFilter?: 'ANY' | 'OWN';
 }
 
 @Injectable()
@@ -32,5 +33,9 @@ export class TenantContextService {
 
   getRequestId(): string {
     return this.getStore()?.requestId ?? '';
+  }
+
+  getScopeFilter(): 'ANY' | 'OWN' | undefined {
+    return this.getStore()?.scopeFilter;
   }
 }

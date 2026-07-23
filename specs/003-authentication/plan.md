@@ -18,7 +18,7 @@ Implement email-based authentication using `@nestjs/jwt` and Passport. Delivery 
 
 **Storage**: PostgreSQL 16+ (User table from spec 002; new RefreshToken entity)
 
-**Testing**: Jest + supertest + Testcontainers
+**Testing**: Jest + supertest (no Testcontainers per user constraint \u2014 VPS with Nginx, no Docker)
 
 **Target Platform**: Linux server (VPS with Nginx reverse proxy)
 

@@ -17,6 +17,11 @@ Stores issued refresh tokens and their revocation status to support rotation, re
 - `replaced_by_id` (String?): Self-referencing foreign key to `RefreshToken`. When token A is rotated, it points to token B. Used to trace and revoke the entire family if token A is reused (reuse detection).
 - `created_at` (DateTime): Default now().
 - `updated_at` (DateTime): Auto-updated.
+- `created_by_id` (String?): FK to User. Audit: who created the token.
+- `updated_by_id` (String?): FK to User. Audit: who last modified.
+- `deleted_by_id` (String?): FK to User. Audit: who revoked (soft-delete context).
+
+*Note: Audit columns were added during Phase 7 Convergence (T022) per Constitution Principle IV.*
 
 ## State Transitions
 

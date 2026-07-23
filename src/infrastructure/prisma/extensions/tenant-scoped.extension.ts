@@ -59,6 +59,7 @@ export function tenantScopedExtension(
             const tenantId = ctx?.tenantId ?? null;
             const userId = ctx?.userId ?? null;
             const isPlatformAdmin = ctx?.isPlatformAdmin ?? false;
+            const scopeFilter = ctx?.scopeFilter;
 
             const isWrite = WRITE_OPS.has(operation);
             const isRead = READ_OPS.has(operation);
@@ -71,6 +72,7 @@ export function tenantScopedExtension(
                 operation,
                 tenantId,
                 userId,
+                scopeFilter,
               );
             }
 
@@ -86,7 +88,7 @@ export function tenantScopedExtension(
                     `use \`findFirst({ where: { id } })\` instead.`,
                 );
               }
-              modifiedArgs = injectReadFilter(modifiedArgs, tenantId);
+              modifiedArgs = injectReadFilter(modifiedArgs, tenantId, userId, scopeFilter);
             }
 
             // Re-entry guard: already inside the tenant transaction that
@@ -124,6 +126,7 @@ function injectWriteContext(
   action: string,
   tenantId: string,
   userId: string | null,
+  scopeFilter?: 'ANY' | 'OWN',
 ): Record<string, unknown> {
   const modified = { ...args };
 
@@ -160,6 +163,9 @@ function injectWriteContext(
       modified.data = data;
       const where = { ...((modified.where as Record<string, unknown>) ?? {}) };
       where.tenantId = tenantId;
+      if (scopeFilter === 'OWN' && userId) {
+        where.createdById = userId;
+      }
       modified.where = where;
       break;
     }
@@ -184,6 +190,9 @@ function injectWriteContext(
     case 'deleteMany': {
       const where = { ...((modified.where as Record<string, unknown>) ?? {}) };
       where.tenantId = tenantId;
+      if (scopeFilter === 'OWN' && userId) {
+        where.createdById = userId;
+      }
       modified.where = where;
       break;
     }
@@ -195,8 +204,13 @@ function injectWriteContext(
 function injectReadFilter(
   args: Record<string, unknown>,
   tenantId: string,
+  userId: string | null,
+  scopeFilter?: 'ANY' | 'OWN',
 ): Record<string, unknown> {
   const where = { ...((args.where as Record<string, unknown>) ?? {}) };
   where.tenantId = tenantId;
+  if (scopeFilter === 'OWN' && userId) {
+    where.createdById = userId;
+  }
   return { ...args, where };
 }

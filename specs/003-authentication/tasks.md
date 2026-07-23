@@ -99,7 +99,7 @@ description: "Task list for 003-authentication implementation"
 **Purpose**: Improvements that affect multiple user stories
 
 - [x] T020 Run `quickstart.md` validation scenarios end-to-end
-- [x] T021 Run basic automated load tests (e.g., Artillery/k6) on `/auth/login` and `/auth/tenant-context` to verify latencias < 2s and < 1s (SC-001, SC-004)
+- [ ] T021 Run basic automated load tests (e.g., Artillery/k6) on `/auth/login` and `/auth/tenant-context` to verify latencias < 2s and < 1s (SC-001, SC-004) — **DEFERRED**: Not executed in initial implementation; can be done as part of a future performance validation pass.
 
 ---
 

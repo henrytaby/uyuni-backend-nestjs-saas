@@ -182,3 +182,12 @@ user, switch tenant context, verify data scope changes.
 - Password requirements: minimum 8 characters. Further complexity rules
   can be added later.
 - Data access policies assume a transaction-scoped session variable for isolation, which the authentication layer will reliably feed via the identity token.
+
+## Dependencies
+
+- **001-foundation-bootstrap**: Provides NestJS application scaffold,
+  pino structured logging, global exception filters, and `requestId`
+  correlation middleware.
+- **002-multi-tenancy-core**: Provides `User` model (with lockout columns),
+  `TenantUser` model, `TenantContextService` (AsyncLocalStorage),
+  `TenantGuard`, and Prisma tenant-scoped extensions.

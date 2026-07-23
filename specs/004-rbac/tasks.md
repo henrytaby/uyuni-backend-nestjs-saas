@@ -22,10 +22,10 @@ description: "Task list for 004-rbac implementation"
 
 **Purpose**: Schema changes and module scaffolding
 
-- [ ] T001 Update `prisma/schema.prisma` with `Role`, `Permission`, and `RoleAssignment` models including enums `PermissionAction` and `PermissionScope`, audit columns, unique constraints, and indexes per data-model.md
-- [ ] T002 Generate and apply Prisma migration for RBAC tables: `npx prisma migrate dev --name rbac`
-- [ ] T003 Create RBAC seed script `prisma/seed-rbac.ts` to populate Global system roles (Admin with full CRUD/ANY, Empleado with scoped CRUD/OWN, Auditor with READ-only/ANY) and their permissions
-- [ ] T004 Create data migration script `prisma/migrate-tenant-user-roles.ts` to convert existing `TenantUser.role` string values to `RoleAssignment` records linked to the matching Global role
+- [x] T001 Update `prisma/schema.prisma` with `Role`, `Permission`, and `RoleAssignment` models including enums `PermissionAction` and `PermissionScope`, audit columns, unique constraints, and indexes per data-model.md
+- [x] T002 Generate and apply Prisma migration for RBAC tables: `npx prisma migrate dev --name rbac`
+- [x] T003 Create RBAC seed script `prisma/seed-rbac.ts` to populate Global system roles (Admin with full CRUD/ANY, Empleado with scoped CRUD/OWN, Auditor with READ-only/ANY) and their permissions
+- [x] T004 Create data migration script `prisma/migrate-tenant-user-roles.ts` to convert existing `TenantUser.role` string values to `RoleAssignment` records linked to the matching Global role
 
 ---
 
@@ -35,10 +35,10 @@ description: "Task list for 004-rbac implementation"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T005 Create `RbacModule` base structure in `src/modules/rbac/rbac.module.ts` and register it in `src/app.module.ts`
-- [ ] T006 [P] Create `@RequirePermissions()` decorator in `src/common/decorators/require-permissions.decorator.ts` that stores module+action metadata via `SetMetadata`
-- [ ] T007 [P] Create `PermissionResolverService` in `src/modules/rbac/services/permission-resolver.service.ts` implementing the permission resolution algorithm: find TenantUser → load active RoleAssignments → load Permissions → merge union (ANY wins over OWN for same module+action)
-- [ ] T008 Create `PermissionsGuard` in `src/common/guards/permissions.guard.ts` that reads `@RequirePermissions()` metadata, calls `PermissionResolverService`, and enforces deny-by-default. Register as third `APP_GUARD` in `app.module.ts` (after JwtAuthGuard and TenantGuard)
+- [x] T005 Create `RbacModule` base structure in `src/modules/rbac/rbac.module.ts` and register it in `src/app.module.ts`
+- [x] T006 [P] Create `@RequirePermissions()` decorator in `src/common/decorators/require-permissions.decorator.ts` that stores module+action metadata via `SetMetadata`
+- [x] T007 [P] Create `PermissionResolverService` in `src/modules/rbac/services/permission-resolver.service.ts` implementing the permission resolution algorithm: find TenantUser → load active RoleAssignments → load Permissions → merge union (ANY wins over OWN for same module+action)
+- [x] T008 Create `PermissionsGuard` in `src/common/guards/permissions.guard.ts` that reads `@RequirePermissions()` metadata, calls `PermissionResolverService`, and enforces deny-by-default. Register as third `APP_GUARD` in `app.module.ts` (after JwtAuthGuard and TenantGuard)
 
 **Checkpoint**: Foundation ready — user story implementation can now begin
 
@@ -52,11 +52,11 @@ description: "Task list for 004-rbac implementation"
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Implement superadmin bypass logic in `PermissionsGuard` (`src/common/guards/permissions.guard.ts`): if `isPlatformAdmin === true`, allow READ and UPDATE but block DELETE on tenant transactional data. Log all bypass actions via pino.
-- [ ] T010 [US1] Create permission DTOs in `src/modules/rbac/dto/permission.dto.ts` with `ApiProperty` decorators for Swagger (module, action, scope fields with validation)
-- [ ] T011 [US1] Implement `GET /rbac/permissions/effective` endpoint in `src/modules/rbac/controllers/rbac.controller.ts` that returns the merged effective permissions for the current user+tenant (calls `PermissionResolverService`)
-- [ ] T012 [US1] Implement `GET /rbac/permissions/modules` endpoint in `src/modules/rbac/controllers/rbac.controller.ts` returning the allowed module registry list
-- [ ] T013 [US1] Add `@RequirePermissions()` decorator to existing `AuthController` protected endpoints as a reference implementation, and add `@ApiBearerAuth()` + Swagger decorators to new RBAC endpoints
+- [x] T009 [US1] Implement superadmin bypass logic in `PermissionsGuard` (`src/common/guards/permissions.guard.ts`): if `isPlatformAdmin === true`, allow READ and UPDATE but block DELETE on tenant transactional data. Log all bypass actions via pino.
+- [x] T010 [US1] Create permission DTOs in `src/modules/rbac/dto/permission.dto.ts` with `ApiProperty` decorators for Swagger (module, action, scope fields with validation)
+- [x] T011 [US1] Implement `GET /rbac/permissions/effective` endpoint in `src/modules/rbac/controllers/rbac.controller.ts` that returns the merged effective permissions for the current user+tenant (calls `PermissionResolverService`)
+- [x] T012 [US1] Implement `GET /rbac/permissions/modules` endpoint in `src/modules/rbac/controllers/rbac.controller.ts` returning the allowed module registry list
+- [x] T013 [US1] Add `@RequirePermissions()` decorator to existing `AuthController` protected endpoints as a reference implementation, and add `@ApiBearerAuth()` + Swagger decorators to new RBAC endpoints
 
 **Checkpoint**: At this point, permission enforcement is active on all decorated endpoints
 
@@ -70,9 +70,9 @@ description: "Task list for 004-rbac implementation"
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Create `OwnershipScopeInterceptor` in `src/common/interceptors/ownership-scope.interceptor.ts` that reads the user's effective scope for the current module+action from `PermissionResolverService` and injects a `scopeFilter` into the request context (via AsyncLocalStorage or request object)
-- [ ] T015 [US2] Update the Prisma tenant-scoped extension in `src/infrastructure/prisma/prisma.service.ts` to apply ownership filtering: if scope is `OWN`, add `WHERE createdById = currentUserId` to all `findMany` and `findFirst` queries for the relevant model
-- [ ] T016 [US2] Ensure all domain models that support ownership scoping have the `createdById` audit column populated automatically via the existing Prisma extension (verify in `src/infrastructure/prisma/`)
+- [x] T014 [US2] Create `OwnershipScopeInterceptor` in `src/common/interceptors/ownership-scope.interceptor.ts`. It reads the `@RequirePermissions` metadata + `effectivePermissions` to determine if the route enforces an `OWN` scope, then mutates the current `TenantContext` to signal `scope: 'OWN'`.
+- [x] T015 [US2] Update the Prisma tenant-scoped extension in `src/infrastructure/prisma/prisma.service.ts` to apply ownership filtering (e.g. `where: { createdById: userId }`) if the context signals an `OWN` scope for reads and writes.
+- [x] T016 [US2] Ensure all domain models that support ownership scoping have the `createdById` audit column populated automatically via the existing Prisma extension (verify in `src/infrastructure/prisma/`).
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -86,9 +86,9 @@ description: "Task list for 004-rbac implementation"
 
 ### Implementation for User Story 3
 
-- [ ] T017 [US3] Create `SuperadminAuditInterceptor` in `src/common/interceptors/superadmin-audit.interceptor.ts` that detects cross-tenant superadmin actions and logs them via pino with fields: `adminId`, `targetTenantId`, `action`, `resource`, `timestamp`
-- [ ] T018 [US3] Register `SuperadminAuditInterceptor` globally in `src/app.module.ts` and verify it runs after guards but before controllers
-- [ ] T019 [US3] Add integration verification: ensure `PermissionsGuard` correctly blocks superadmin DELETE on transactional endpoints and allows READ/UPDATE
+- [x] T017 [US3] Create `SuperadminAuditInterceptor` in `src/common/interceptors/superadmin-audit.interceptor.ts` that detects cross-tenant superadmin actions and logs them via pino with fields: `adminId`, `targetTenantId`, `action`, `resource`, `timestamp`
+- [x] T018 [US3] Register `SuperadminAuditInterceptor` globally in `src/app.module.ts` and verify it runs after guards but before controllers
+- [x] T019 [US3] Add integration verification: ensure `PermissionsGuard` correctly blocks superadmin DELETE on transactional endpoints and allows READ/UPDATE
 
 **Checkpoint**: Superadmin compliance is active and audited
 
@@ -102,13 +102,13 @@ description: "Task list for 004-rbac implementation"
 
 ### Implementation for User Story 4
 
-- [ ] T020 [P] [US4] Create role DTOs in `src/modules/rbac/dto/create-role.dto.ts` and `src/modules/rbac/dto/update-role.dto.ts` with validation (name 2-100 chars, permissions array with module/action/scope validation, `ApiProperty` decorators)
-- [ ] T021 [P] [US4] Create assignment DTO in `src/modules/rbac/dto/assign-role.dto.ts` with `userId` and `roleId` UUID validation and `ApiProperty` decorators
-- [ ] T022 [US4] Implement `RbacService` in `src/modules/rbac/services/rbac.service.ts` with methods: `listRoles(tenantId)` (global + tenant custom), `createRole(tenantId, dto)`, `updateRole(roleId, dto)` (block if isSystem), `deleteRole(roleId)` (block if isSystem or has active assignments → 409)
-- [ ] T023 [US4] Implement `RbacService` assignment methods in `src/modules/rbac/services/rbac.service.ts`: `listAssignments(tenantId)`, `assignRole(tenantUserId, roleId, assignedById)`, `removeAssignment(assignmentId)`
-- [ ] T024 [US4] Implement role CRUD endpoints in `src/modules/rbac/controllers/rbac.controller.ts`: `GET /rbac/roles`, `POST /rbac/roles`, `PATCH /rbac/roles/:id`, `DELETE /rbac/roles/:id` per contracts/rbac-roles.md
-- [ ] T025 [US4] Implement assignment endpoints in `src/modules/rbac/controllers/rbac.controller.ts`: `GET /rbac/assignments`, `POST /rbac/assignments`, `DELETE /rbac/assignments/:id` per contracts/rbac-role-assignment.md
-- [ ] T026 [US4] Add Swagger decorators (`@ApiTags`, `@ApiOperation`, `@ApiResponse`, `@ApiBearerAuth`) to all RBAC controller endpoints
+- [x] T020 [P] [US4] Create role DTOs in `src/modules/rbac/dto/create-role.dto.ts` and `src/modules/rbac/dto/update-role.dto.ts` with validation (name 2-100 chars, permissions array with module/action/scope validation, `ApiProperty` decorators)
+- [x] T021 [P] [US4] Create assignment DTO in `src/modules/rbac/dto/assign-role.dto.ts` with `userId` and `roleId` UUID validation and `ApiProperty` decorators
+- [x] T022 [US4] Implement `RbacService` in `src/modules/rbac/services/rbac.service.ts` with methods: `listRoles(tenantId)` (global + tenant custom), `createRole(tenantId, dto)`, `updateRole(roleId, dto)` (block if isSystem), `deleteRole(roleId)` (block if isSystem or has active assignments → 409)
+- [x] T023 [US4] Implement `RbacService` assignment methods in `src/modules/rbac/services/rbac.service.ts`: `listAssignments(tenantId)`, `assignRole(tenantUserId, roleId, assignedById)`, `removeAssignment(assignmentId)`
+- [x] T024 [US4] Implement role CRUD endpoints in `src/modules/rbac/controllers/rbac.controller.ts`: `GET /rbac/roles`, `POST /rbac/roles`, `PATCH /rbac/roles/:id`, `DELETE /rbac/roles/:id` per contracts/rbac-roles.md
+- [x] T025 [US4] Implement assignment endpoints in `src/modules/rbac/controllers/rbac.controller.ts`: `GET /rbac/assignments`, `POST /rbac/assignments`, `DELETE /rbac/assignments/:id` per contracts/rbac-role-assignment.md
+- [x] T026 [US4] Add Swagger decorators (`@ApiTags`, `@ApiOperation`, `@ApiResponse`, `@ApiBearerAuth`) to all RBAC controller endpoints
 
 **Checkpoint**: All user stories should now be independently functional
 
@@ -118,8 +118,8 @@ description: "Task list for 004-rbac implementation"
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T027 Run `quickstart.md` validation scenarios end-to-end (all 5 scenarios)
-- [ ] T028 Verify that `TenantUser.role` string column migration completed correctly and drop the deprecated column if safe
+- [x] T027 Run `quickstart.md` validation scenarios end-to-end (all 5 scenarios)
+- [x] T028 Verify that `TenantUser.role` string column migration completed correctly and drop the deprecated column if safe
 
 ---
 
