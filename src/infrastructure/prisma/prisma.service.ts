@@ -3,10 +3,17 @@ import {
   Logger,
   OnModuleInit,
   OnModuleDestroy,
+  Inject,
 } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { ConfigService } from '@nestjs/config';
+import { TenantContextService } from '../../common/context/tenant-context.js';
+import { tenantScopedExtension } from './extensions/tenant-scoped.extension.js';
+import {
+  TENANT_SCOPED_MODELS,
+  DEFAULT_TENANT_SCOPED_MODELS,
+} from './extensions/tenant-scoped-models.js';
 
 @Injectable()
 export class PrismaService
@@ -15,10 +22,21 @@ export class PrismaService
 {
   private readonly logger = new Logger(PrismaService.name);
 
-  constructor(configService: ConfigService) {
+  constructor(
+    configService: ConfigService,
+    tenantContextService: TenantContextService,
+    @Inject(TENANT_SCOPED_MODELS)
+    tenantScopedModels: ReadonlySet<string>,
+  ) {
     const url = configService.get<string>('DATABASE_URL');
     const adapter = new PrismaPg({ connectionString: url });
     super({ adapter });
+    return this.$extends(
+      tenantScopedExtension(
+        tenantContextService,
+        tenantScopedModels ?? DEFAULT_TENANT_SCOPED_MODELS,
+      ),
+    ) as this;
   }
 
   async onModuleInit(): Promise<void> {

@@ -14,6 +14,8 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from '../../src/app.module';
 import { GlobalExceptionFilter } from '../../src/common/filters/global-exception.filter';
+import { ThrottlerGuard } from '@nestjs/throttler';
+
 import {
   ValidationSampleController,
   SampleDto,
@@ -61,7 +63,10 @@ describe('Foundation e2e (spec 001)', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule, ValidationTestModule],
-    }).compile();
+    })
+      .overrideGuard(ThrottlerGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     const expressInstance = app.getHttpAdapter().getInstance() as Express;

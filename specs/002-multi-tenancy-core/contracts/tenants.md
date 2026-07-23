@@ -55,6 +55,7 @@ Create a new tenant.
 **Errors**:
 - 400: Validation error (duplicate slug, invalid plan)
 - 404: Plan not found
+- 404: Plan is inactive (cannot create tenant on an inactive plan)
 
 ---
 

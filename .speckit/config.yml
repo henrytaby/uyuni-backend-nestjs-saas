@@ -1,0 +1,11 @@
+context:
+  max_tokens: 12000
+  max_files: 4
+  exclude_patterns:
+    - "node_modules/**"
+    - "*.lock"
+    - "dist/**"
+    - ".git/**"
+    - "build/**"
+  prioritize_recent: true
+  summarize_if_large: true

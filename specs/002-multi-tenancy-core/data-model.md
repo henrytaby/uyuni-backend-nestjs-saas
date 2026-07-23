@@ -252,3 +252,13 @@ false`). The column exists in the schema from this migration; the Prisma
 extension in spec 005 will make injection fully automatic for all audit columns.
 In the interim, the tenancy Prisma extension populates it via context reads
 when a soft-delete operation occurs.
+
+## Migration Notes
+
+### FORCE ROW LEVEL SECURITY
+
+The `tenant_core` migration includes `ALTER TABLE "tenant_users" FORCE ROW LEVEL SECURITY` in addition to `ENABLE ROW LEVEL SECURITY`. The `FORCE` modifier means that even the table owner (`postgres`) must satisfy the RLS policy — only superusers bypass it automatically. This ensures that if the application accidentally connects as the table owner, RLS still applies. The test harness uses `adminDatabaseUrl` (postgres superuser) for seeding because superusers bypass `FORCE ROW LEVEL SECURITY` by default; production connections via `DATABASE_URL` use a non-superuser (`app_user`) that respects RLS.
+
+### ON DELETE RESTRICT
+
+All foreign keys use `ON DELETE RESTRICT` for data-integrity tables (Tenant→Plan, TenantUser→Tenant, TenantUser→User) and `ON DELETE SET NULL` for audit FKs (`created_by_id`, `updated_by_id`, `deleted_by_id` → User). The `RESTRICT` strategy prevents accidental cascading deletes that would violate multi-tenant integrity — a Plan cannot be hard-deleted while Tenants reference it, and a Tenant cannot be hard-deleted while TenantUsers reference it. Soft-delete (`isActive=false`) is the only supported deletion path.

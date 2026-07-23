@@ -4,5 +4,116 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+}
+
+enum PaymentState {
+  ACTIVO
+  MOROSO
+  SUSPENDIDO
+}
+
+model Plan {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String   @unique
+  tierLevel    Int      @map("tier_level")
+  maxUsers     Int      @map("max_users")
+  storageLimit BigInt   @map("storage_limit")
+  moduleAccess Json     @map("module_access")
+  price        Decimal? @db.Decimal
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdById  String?  @map("created_by_id") @db.Uuid
+  updatedById  String?  @map("updated_by_id") @db.Uuid
+  deletedById  String?  @map("deleted_by_id") @db.Uuid
+  createdBy    User?    @relation("PlanCreatedBy", fields: [createdById], references: [id])
+  updatedBy    User?    @relation("PlanUpdatedBy", fields: [updatedById], references: [id])
+  deletedBy    User?    @relation("PlanDeletedBy", fields: [deletedById], references: [id])
+  tenants      Tenant[]
+
+  @@map("plans")
+}
+
+model Tenant {
+  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  planId            String       @map("plan_id") @db.Uuid
+  name              String
+  slug              String       @unique
+  paymentState      PaymentState @default(ACTIVO) @map("payment_state")
+  subscriptionStart DateTime?    @map("subscription_start")
+  subscriptionEnd   DateTime?    @map("subscription_end")
+  isActive          Boolean      @default(true) @map("is_active")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+  createdById       String?      @map("created_by_id") @db.Uuid
+  updatedById       String?      @map("updated_by_id") @db.Uuid
+  deletedById       String?      @map("deleted_by_id") @db.Uuid
+  plan              Plan         @relation(fields: [planId], references: [id])
+  createdBy         User?        @relation("TenantCreatedBy", fields: [createdById], references: [id])
+  updatedBy         User?        @relation("TenantUpdatedBy", fields: [updatedById], references: [id])
+  deletedBy         User?        @relation("TenantDeletedBy", fields: [deletedById], references: [id])
+  members           TenantUser[]
+
+  @@index([planId])
+  @@map("tenants")
+}
+
+model User {
+  id                  String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email               String       @unique
+  passwordHash        String       @map("password_hash")
+  firstName           String?      @map("first_name")
+  lastName            String?      @map("last_name")
+  isPlatformAdmin     Boolean      @default(false) @map("is_platform_admin")
+  isVerified          Boolean      @default(false) @map("is_verified")
+  failedLoginAttempts Int          @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime?    @map("locked_until")
+  lastLoginAt         DateTime?    @map("last_login_at")
+  isActive            Boolean      @default(true) @map("is_active")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+  createdById         String?      @map("created_by_id") @db.Uuid
+  updatedById         String?      @map("updated_by_id") @db.Uuid
+  deletedById         String?      @map("deleted_by_id") @db.Uuid
+  createdBy           User?        @relation("UserCreatedBy", fields: [createdById], references: [id])
+  updatedBy           User?        @relation("UserUpdatedBy", fields: [updatedById], references: [id])
+  deletedBy           User?        @relation("UserDeletedBy", fields: [deletedById], references: [id])
+  createdUsers        User[]       @relation("UserCreatedBy")
+  updatedUsers        User[]       @relation("UserUpdatedBy")
+  deletedUsers        User[]       @relation("UserDeletedBy")
+  planCreated         Plan[]       @relation("PlanCreatedBy")
+  planUpdated         Plan[]       @relation("PlanUpdatedBy")
+  planDeleted         Plan[]       @relation("PlanDeletedBy")
+  tenantCreated       Tenant[]     @relation("TenantCreatedBy")
+  tenantUpdated       Tenant[]     @relation("TenantUpdatedBy")
+  tenantDeleted       Tenant[]     @relation("TenantDeletedBy")
+  tenantUserCreated   TenantUser[] @relation("TenantUserCreatedBy")
+  tenantUserUpdated   TenantUser[] @relation("TenantUserUpdatedBy")
+  tenantUserDeleted   TenantUser[] @relation("TenantUserDeletedBy")
+  memberships         TenantUser[]
+
+  @@map("users")
+}
+
+model TenantUser {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  role        String   @default("EMPLEADO")
+  isActive    Boolean  @default(true) @map("is_active")
+  joinedAt    DateTime @default(now()) @map("joined_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdById String?  @map("created_by_id") @db.Uuid
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  deletedById String?  @map("deleted_by_id") @db.Uuid
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+  createdBy   User?    @relation("TenantUserCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?    @relation("TenantUserUpdatedBy", fields: [updatedById], references: [id])
+  deletedBy   User?    @relation("TenantUserDeletedBy", fields: [deletedById], references: [id])
+
+  @@unique([tenantId, userId])
+  @@index([userId])
+  @@map("tenant_users")
 }
