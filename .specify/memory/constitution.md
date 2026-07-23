@@ -1,27 +1,10 @@
 <!--
   Sync Impact Report
   ==================
-  Version change: 1.0.0 → 1.0.1 (PATCH)
-  Rationale: Align ORM version with installed package.json (^7.8.0). Prisma 7.x
-    supersedes the previously documented 6.x. The Client Extensions API
-    (`Prisma.defineExtension`, `$extends`) is stable in 7.x with the same
-    surface; the PrismaPg driver adapter (used since spec 001) is the
-    recommended connection strategy in 7.x.
-  Modified sections:
-    - Technology Stack & Architecture Constraints → ORM row: Prisma 6.x → Prisma 7.x
-  No principle semantics changed; this is a clarifying version alignment (PATCH
-    per Governance §Amendment Procedure).
-  Prior version change: N/A (template) → 1.0.0
-  Modified principles (v1.0.0):
-    - [PRINCIPLE_1_NAME] → I. Strict Multi-Tenant Isolation
-    - [PRINCIPLE_2_NAME] → II. Granular Role-Based Access Control (RBAC)
-    - [PRINCIPLE_3_NAME] → III. Subscription-Driven Feature Gating
-    - [PRINCIPLE_4_NAME] → IV. Immutable Audit Trail
-    - [PRINCIPLE_5_NAME] → V. API-First Modular Architecture
-  Added sections (v1.0.0):
-    - Technology Stack & Architecture Constraints
-    - Domain Modules & Quality Gates
-    - Governance
+  Version change: 1.0.1 → 1.1.0 (MINOR)
+  Rationale: Add Implementation Status tracking section, correct bcrypt→bcryptjs alignment, add zod to tech stack, add lockout.service.ts documentation
+  Modified sections: Technology Stack (Auth row: bcrypt→bcryptjs, add zod row)
+  Added sections: Implementation Status & Progress
   Removed sections: None
   Templates requiring updates:
     - .specify/templates/plan-template.md ✅ compatible (Constitution Check section generic)
@@ -144,7 +127,8 @@ parallel development across teams.
 | ORM | Prisma 7.x | Migrations only; Client Extensions API (`$extends`/`defineExtension`) for auto-injection; PrismaPg driver adapter required; no raw SQL without review |
 | Database | PostgreSQL 16+ | RLS enabled on all tenant-scoped tables |
 | Validation | `class-validator` + `class-transformer` | All DTOs MUST use decorators |
-| Auth | `@nestjs/jwt` + `passport-jwt` + `bcrypt` | Refresh token rotation mandatory |
+| Env Validation | `zod` v4.x | Runtime schema validation for env vars |
+| Auth | `@nestjs/jwt` + `passport-jwt` + `bcryptjs` | Refresh token rotation mandatory |
 | Logging | `pino` + `nestjs-pino` | Structured JSON only |
 | Testing | Jest + supertest + Testcontainers | E2E must use real DB containers |
 
@@ -230,6 +214,46 @@ prohibited.
 - **Anti-Leakage Gates**: Automated tests MUST verify that a Tenant A user
   cannot access Tenant B data — this is a non-negotiable CI gate.
 
+## Implementation Status & Progress
+
+> This section tracks the actual implementation state of each architectural
+> component and domain module against the specifications in `/specs/`.
+> Updated via reverse engineering analysis on 2026-07-23.
+
+### Implemented (In Production Code)
+
+| Component | Spec | Prisma Models | Key Files |
+|---|---|---|---|
+| Foundation & Bootstrap | 001 | — | `main.ts`, `app.module.ts`, `GlobalExceptionFilter`, `RequestContextInterceptor` |
+| Multi-Tenancy Core | 002 | `Tenant`, `TenantUser`, `Plan`, `User` | `tenant-scoped.extension.ts`, `TenantContextMiddleware`, `TenantGuard`, `TenantContextService` |
+| Authentication | 003 | `RefreshToken` | `AuthModule`, `JwtStrategy`, `TokenService`, `LockoutService` |
+| RBAC | 004 | `Role`, `Permission`, `RoleAssignment` | `RbacModule`, `PermissionsGuard`, `PermissionResolverService`, `OwnershipScopeInterceptor` |
+
+### Specified but Not Yet Implemented
+
+| Component | Spec | Status | Dependency |
+|---|---|---|---|
+| Audit Infrastructure | 005 | Spec ready | Depends on 001-004 (done) |
+| Generic Repository & DataTables | 006 | Spec ready | Depends on 002, 004 |
+| Dynamic Catalogs | 007 | Spec ready | Depends on 002, 006 |
+| SaaS Administration | 008 | Spec ready | Depends on 002, 003, 007 |
+| CRM Core | 009 | Spec ready | Depends on 006, 007 |
+| Agenda & Tasks | 010 | Spec ready | Depends on 006, 007 |
+| Sales & Billing | 011 | Spec ready | Depends on 006, 007, 009 |
+| Basic Inventory | 012 | Spec ready | Depends on 006, 007 |
+
+### Current Prisma Schema (8 Models)
+
+`Plan`, `Tenant`, `User`, `TenantUser`, `RefreshToken`, `Role`,
+`Permission`, `RoleAssignment`
+
+### Global Guards & Interceptors (Execution Order)
+
+1. `ThrottlerGuard` → 2. `JwtAuthGuard` → 3. `TenantGuard` →
+4. `PermissionsGuard` → 5. `PlatformAdminGuard`
+
+Interceptors: `OwnershipScopeInterceptor`, `SuperadminAuditInterceptor`
+
 ## Governance
 
 This Constitution is the supreme governing document for all development
@@ -258,4 +282,4 @@ Constitution takes precedence.
 - Anti-patterns (manual tenant filtering, missing audit columns, centralized
   routing) MUST be caught in code review.
 
-**Version**: 1.0.1 | **Ratified**: 2026-07-07 | **Last Amended**: 2026-07-08
+**Version**: 1.1.0 | **Ratified**: 2026-07-07 | **Last Amended**: 2026-07-23

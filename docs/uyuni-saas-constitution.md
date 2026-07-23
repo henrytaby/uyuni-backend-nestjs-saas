@@ -1,5 +1,7 @@
 # Uyuni SaaS - Constitution
 
+<!-- NOTA: Este archivo es una copia de referencia. La fuente canónica es .specify/memory/constitution.md -->
+
 > **Documento maestro de la especificación técnica y funcional para Uyuni SaaS.**
 > Este documento define **qué** construir y **cómo**, actuando como el núcleo de conocimiento para el desarrollo desde cero en NestJS.
 
@@ -29,13 +31,14 @@ El proyecto está diseñado para desplegarse en entornos tradicionales (ej. VPS 
 |---|---|
 | **Lenguaje** | TypeScript 5.x estricto |
 | **Framework Backend** | NestJS 11.x |
-| **ORM** | Prisma 6.x |
+| **ORM** | Prisma 7.x |
 | **Base de Datos** | PostgreSQL 16+ |
 | **Frontend** | Angular 21.x (Repositorio separado) |
 | **Validación** | `class-validator` + `class-transformer` |
-| **Autenticación** | `@nestjs/jwt` + `passport-jwt` + `bcrypt` |
+| **Autenticación** | `@nestjs/jwt` + `passport-jwt` + `bcryptjs` |
 | **Logging** | `pino` + `nestjs-pino` |
 | **Testing** | Jest + supertest + Testcontainers |
+| **Validación de Entorno** | Zod 4.x |
 
 ---
 
@@ -165,3 +168,24 @@ Para servir como un verdadero SaaS B2B genérico, el sistema abandona estructura
 - **Testing Pyramid**: Tests unitarios en lógica de negocio y tests e2e para controladores.
 - **E2E con Testcontainers**: Pruebas de base de datos real en un ambiente aislado durante CI.
 - **Gates Anti-Fugas de Tenant**: Pruebas automatizadas críticas que aseguran que es matemáticamente imposible que un usuario del Tenant A acceda a datos del Tenant B.
+
+---
+
+## 6. Estado de Implementación
+
+> Última actualización: 2026-07-23
+
+| # | Módulo | Estado | Spec |
+|---|--------|:------:|------|
+| 001 | Foundation & Bootstrap | ✅ Implementado | `specs/001` |
+| 002 | Multi-Tenancy Core | ✅ Implementado | `specs/002` |
+| 003 | Authentication | ✅ Implementado | `specs/003` |
+| 004 | RBAC | ✅ Implementado | `specs/004` |
+| 005 | Audit Infrastructure | 📋 Especificado | `specs/005` |
+| 006 | Generic Repository & DataTables | 📋 Especificado | `specs/006` |
+| 007 | Dynamic Catalogs | 📋 Especificado | `specs/007` |
+| 008 | SaaS Administration | 📋 Especificado | `specs/008` |
+| 009 | CRM Core | 📋 Especificado | `specs/009` |
+| 010 | Agenda & Tasks | 📋 Especificado | `specs/010` |
+| 011 | Sales & Billing | 📋 Especificado | `specs/011` |
+| 012 | Basic Inventory | 📋 Especificado | `specs/012` |
