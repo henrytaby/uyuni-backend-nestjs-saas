@@ -110,6 +110,11 @@ user, switch tenant context, verify data scope changes.
 - Login attempt on a soft-deleted user account — MUST return the same
   error as invalid credentials (no information leakage).
 
+### Implementation Discoveries (Post-Development)
+
+- **Tenant Guard Bypass**: A global `TenantGuard` (from stage 002) blocked endpoints lacking a tenant context. A `@BypassTenant()` decorator was introduced to allow `/auth/tenant-context` and `/auth/logout` to function securely without a pre-existing tenant selection.
+- **Swagger Integration Constraints**: Express `@Req()` and `@Res()` objects were typed as `any` in controllers to bypass a severe NestJS/TypeScript Swagger reflection error (`TS1272`). Swagger was explicitly configured in `main.ts` with `addBearerAuth()` for UI testing.
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements

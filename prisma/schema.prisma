@@ -91,6 +91,10 @@ model User {
   tenantUserUpdated   TenantUser[] @relation("TenantUserUpdatedBy")
   tenantUserDeleted   TenantUser[] @relation("TenantUserDeletedBy")
   memberships         TenantUser[]
+  refreshTokens       RefreshToken[] @relation("RefreshTokenUser")
+  refreshTokenCreated RefreshToken[] @relation("RefreshTokenCreatedBy")
+  refreshTokenUpdated RefreshToken[] @relation("RefreshTokenUpdatedBy")
+  refreshTokenDeleted RefreshToken[] @relation("RefreshTokenDeletedBy")
 
   @@map("users")
 }
@@ -116,4 +120,28 @@ model TenantUser {
   @@unique([tenantId, userId])
   @@index([userId])
   @@map("tenant_users")
+}
+
+model RefreshToken {
+  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tokenHash    String         @map("token_hash")
+  userId       String         @map("user_id") @db.Uuid
+  isRevoked    Boolean        @default(false) @map("is_revoked")
+  expiresAt    DateTime       @map("expires_at")
+  replacedById String?        @map("replaced_by_id") @db.Uuid
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  createdById  String?        @map("created_by_id") @db.Uuid
+  updatedById  String?        @map("updated_by_id") @db.Uuid
+  deletedById  String?        @map("deleted_by_id") @db.Uuid
+  user         User           @relation("RefreshTokenUser", fields: [userId], references: [id], onDelete: Cascade)
+  createdBy    User?          @relation("RefreshTokenCreatedBy", fields: [createdById], references: [id])
+  updatedBy    User?          @relation("RefreshTokenUpdatedBy", fields: [updatedById], references: [id])
+  deletedBy    User?          @relation("RefreshTokenDeletedBy", fields: [deletedById], references: [id])
+  replacedBy   RefreshToken?  @relation("ReplacedBy", fields: [replacedById], references: [id], onDelete: SetNull)
+  replacements RefreshToken[] @relation("ReplacedBy")
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
 }

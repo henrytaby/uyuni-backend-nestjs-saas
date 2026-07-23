@@ -2,6 +2,7 @@ import { NestFactory, HttpAdapterHost } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import type { Express, Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module.js';
@@ -18,6 +19,7 @@ async function bootstrap(): Promise<void> {
 
   const expressInstance = app.getHttpAdapter().getInstance() as Express;
   app.use(helmet());
+  app.use(cookieParser());
   expressInstance.set('trust proxy', trustProxy);
 
   // Single CORS owner (T037): parse comma-separated origins from env.
@@ -47,6 +49,17 @@ async function bootstrap(): Promise<void> {
       'REST API for the Uyuni SaaS platform — foundation (spec 001).',
     )
     .setVersion('0.0.1')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Enter JWT token',
+        in: 'header',
+      },
+      'bearer', // This name here is important for matching up with @ApiBearerAuth() in your controller!
+    )
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('/api/docs', app, document, {

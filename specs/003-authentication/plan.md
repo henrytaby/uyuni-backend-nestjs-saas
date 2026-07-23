@@ -26,7 +26,7 @@ Implement email-based authentication using `@nestjs/jwt` and Passport. Delivery 
 
 **Performance Goals**: Login response < 2s; token refresh < 500ms; tenant context switch reflected < 1s
 
-**Constraints**: No usernames (email-only identity); refresh token rotation mandatory with HttpOnly delivery; reuse detection invalidates the session family; lockout after 5 attempts for 15 min; no info leakage.
+**Constraints**: No usernames (email-only identity); refresh token rotation mandatory with HttpOnly delivery; reuse detection invalidates the session family; lockout after 5 attempts for 15 min; no info leakage. *Implementation Constraint:* Express `@Req()` and `@Res()` objects must be typed as `any` in controllers to avoid severe `TS1272` Swagger metadata reflection errors in the build environment.
 
 **Scale/Scope**: Thousands of concurrent authenticated users; short-lived access tokens minimize revocation surface.
 
@@ -67,8 +67,10 @@ specs/003-authentication/
 ```text
 src/
 ├── common/
-│   └── guards/
-│       └── jwt-auth.guard.ts            # Global JWT guard
+│   ├── guards/
+│   │   └── jwt-auth.guard.ts            # Global JWT guard
+│   └── decorators/
+│       └── bypass-tenant.decorator.ts   # New: Bypasses global TenantGuard for auth endpoints
 ├── modules/
 │   └── auth/
 │       ├── auth.module.ts
@@ -93,7 +95,7 @@ test/
     └── auth.e2e-spec.ts                # End-to-end scenarios
 ```
 
-**Structure Decision**: Feature module `auth` in `src/modules/`. The JWT strategy is registered globally so every protected endpoint enforces it via `JwtAuthGuard`. Rate Limiting is localized to the Auth controller using Throttler decorators.
+**Structure Decision**: Feature module `auth` in `src/modules/`. The JWT strategy is registered globally so every protected endpoint enforces it via `JwtAuthGuard`. A custom `@BypassTenant()` decorator was added to allow specific endpoints (like context-switch and logout) to bypass the global `TenantGuard`. Rate Limiting is localized to the Auth controller using Throttler decorators. Swagger is configured in `main.ts` with `addBearerAuth()` to support in-browser token testing.
 
 ## Constitution Check (Post-Design Re-Evaluation)
 

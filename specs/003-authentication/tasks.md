@@ -22,8 +22,8 @@ description: "Task list for 003-authentication implementation"
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Install authentication dependencies (`@nestjs/jwt`, `passport-jwt`, `@nestjs/passport`, `@nestjs/throttler`, `bcrypt`, `cookie-parser`, and types) in `package.json`
-- [ ] T002 Update `src/main.ts` to use `cookie-parser` globally
+- [x] T001 Install authentication dependencies (`@nestjs/jwt`, `passport-jwt`, `@nestjs/passport`, `@nestjs/throttler`, `bcrypt`, `cookie-parser`, and types) in `package.json`
+- [x] T002 Update `src/main.ts` to use `cookie-parser` globally
 
 ---
 
@@ -33,8 +33,8 @@ description: "Task list for 003-authentication implementation"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Update `prisma/schema.prisma` with `RefreshToken` model and user lockout columns, and generate migration
-- [ ] T004 [P] Create `AuthModule` base structure in `src/modules/auth/auth.module.ts` and register it in `src/app.module.ts`
+- [x] T003 Update `prisma/schema.prisma` with `RefreshToken` model and user lockout columns, and generate migration
+- [x] T004 [P] Create `AuthModule` base structure in `src/modules/auth/auth.module.ts` and register it in `src/app.module.ts`
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
@@ -48,13 +48,13 @@ description: "Task list for 003-authentication implementation"
 
 ### Implementation for User Story 1
 
-- [ ] T005 [P] [US1] Create login DTO in `src/modules/auth/dto/login.dto.ts`
-- [ ] T006 [P] [US1] Implement `JwtStrategy` in `src/modules/auth/strategies/jwt.strategy.ts` to validate JWTs and populate `TenantContext`
-- [ ] T007 [P] [US1] Create global `JwtAuthGuard` in `src/common/guards/jwt-auth.guard.ts`
-- [ ] T008 [US1] Implement `TokenService` in `src/modules/auth/services/token.service.ts` to generate and sign access and refresh tokens (ensure JWT payload includes `mfa_verified: false` placeholder for FR-015)
-- [ ] T009 [US1] Implement `AuthService` login method in `src/modules/auth/services/auth.service.ts` (validate bcrypt password, fetch user tenants/roles, call `TokenService`)
-- [ ] T010 [US1] Implement `AuthController` `/auth/login` endpoint in `src/modules/auth/controllers/auth.controller.ts` with HttpOnly cookie handling
-- [ ] T011 [US1] Integrate `@nestjs/throttler` in `AuthModule` and apply rate-limiting guard to `AuthController` to mitigate password spraying
+- [x] T005 [P] [US1] Create login DTO in `src/modules/auth/dto/login.dto.ts`
+- [x] T006 [P] [US1] Implement `JwtStrategy` in `src/modules/auth/strategies/jwt.strategy.ts` to validate JWTs and populate `TenantContext`
+- [x] T007 [P] [US1] Create global `JwtAuthGuard` in `src/common/guards/jwt-auth.guard.ts`
+- [x] T008 [US1] Implement `TokenService` in `src/modules/auth/services/token.service.ts` to generate and sign access and refresh tokens (ensure JWT payload includes `mfa_verified: false` placeholder for FR-015)
+- [x] T009 [US1] Implement `AuthService` login method in `src/modules/auth/services/auth.service.ts` (validate bcrypt password, fetch user tenants/roles, call `TokenService`)
+- [x] T010 [US1] Implement `AuthController` `/auth/login` endpoint in `src/modules/auth/controllers/auth.controller.ts` with HttpOnly cookie handling
+- [x] T011 [US1] Integrate `@nestjs/throttler` in `AuthModule` and apply rate-limiting guard to `AuthController` to mitigate password spraying
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -68,9 +68,9 @@ description: "Task list for 003-authentication implementation"
 
 ### Implementation for User Story 2
 
-- [ ] T012 [P] [US2] Update `TokenService` in `src/modules/auth/services/token.service.ts` with refresh token rotation logic (verify, revoke, trace `replaced_by_id` for reuse detection)
-- [ ] T013 [US2] Update `AuthService` in `src/modules/auth/services/auth.service.ts` with local logout and global logout methods (invalidating refresh tokens in DB)
-- [ ] T014 [US2] Update `AuthController` in `src/modules/auth/controllers/auth.controller.ts` with `/auth/refresh`, `/auth/logout`, and `/auth/logout/global` endpoints managing cookie cleanup
+- [x] T012 [P] [US2] Update `TokenService` in `src/modules/auth/services/token.service.ts` with refresh token rotation logic (verify, revoke, trace `replaced_by_id` for reuse detection)
+- [x] T013 [US2] Update `AuthService` in `src/modules/auth/services/auth.service.ts` with local logout and global logout methods (invalidating refresh tokens in DB)
+- [x] T014 [US2] Update `AuthController` in `src/modules/auth/controllers/auth.controller.ts` with `/auth/refresh`, `/auth/logout`, and `/auth/logout/global` endpoints managing cookie cleanup
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -84,11 +84,11 @@ description: "Task list for 003-authentication implementation"
 
 ### Implementation for User Story 3
 
-- [ ] T015 [P] [US3] Create tenant context DTO in `src/modules/auth/dto/tenant-context.dto.ts`
-- [ ] T016 [US3] Implement `LockoutService` in `src/modules/auth/services/lockout.service.ts` to track attempts and enforce lockout duration on the `User` model
-- [ ] T017 [US3] Update `AuthService` login method in `src/modules/auth/services/auth.service.ts` to integrate `LockoutService` (increment on fail, reset on success, block if locked)
-- [ ] T018 [US3] Update `AuthService` with tenant context switch method in `src/modules/auth/services/auth.service.ts` (validate tenant membership, issue new access token)
-- [ ] T019 [US3] Update `AuthController` in `src/modules/auth/controllers/auth.controller.ts` with `/auth/tenant-context` endpoint
+- [x] T015 [P] [US3] Create tenant context DTO in `src/modules/auth/dto/tenant-context.dto.ts`
+- [x] T016 [US3] Implement `LockoutService` in `src/modules/auth/services/lockout.service.ts` to track attempts and enforce lockout duration on the `User` model
+- [x] T017 [US3] Update `AuthService` login method in `src/modules/auth/services/auth.service.ts` to integrate `LockoutService` (increment on fail, reset on success, block if locked)
+- [x] T018 [US3] Update `AuthService` with tenant context switch method in `src/modules/auth/services/auth.service.ts` (validate tenant membership, issue new access token)
+- [x] T019 [US3] Update `AuthController` in `src/modules/auth/controllers/auth.controller.ts` with `/auth/tenant-context` endpoint
 
 **Checkpoint**: All user stories should now be independently functional
 
@@ -98,8 +98,8 @@ description: "Task list for 003-authentication implementation"
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T020 Run `quickstart.md` validation scenarios end-to-end
-- [ ] T021 Run basic automated load tests (e.g., Artillery/k6) on `/auth/login` and `/auth/tenant-context` to verify latencias < 2s and < 1s (SC-001, SC-004)
+- [x] T020 Run `quickstart.md` validation scenarios end-to-end
+- [x] T021 Run basic automated load tests (e.g., Artillery/k6) on `/auth/login` and `/auth/tenant-context` to verify latencias < 2s and < 1s (SC-001, SC-004)
 
 ---
 
@@ -134,3 +134,7 @@ description: "Task list for 003-authentication implementation"
 2. Add User Story 1 → Validates basic auth and cookie transport
 3. Add User Story 2 → Adds session security and lifecycle management
 4. Add User Story 3 → Adds brute-force protection and tenant switching
+
+## Phase 7: Convergence
+
+- [x] T022 Add audit columns (`createdById`, `updatedById`, `deletedById`) to `RefreshToken` model and generate migration per Constitution IV (missing)
