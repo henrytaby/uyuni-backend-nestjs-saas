@@ -1,170 +1,91 @@
-# Feature Specification: Basic Inventory (Logistics — Pro/Premium Plans Only)
+# 012-basic-inventory
 
-**Feature Branch**: `012-basic-inventory`
+**Status**: Ready
+**Updated**: 2026-07-23 (Enterprise Architect Review — v2)
 
-**Created**: 2026-07-07
+## Overview
+This specification details the Basic Inventory module, providing multi-tenant capabilities for managing products, tracking stock, and controlling fixed assets. It ensures robust concurrency control, accurate stock levels, and integration with invoicing and catalog modules.
 
-**Status**: Draft
+## User Stories
 
-**Input**: User description: "Implement a basic inventory module gated to Pro/Premium plans with product/service catalog, simple stock control with movements and alerts, and fixed-asset management."
+### US1 - Product Catalog
+As an inventory manager, I need a comprehensive product catalog to manage physical goods, services, and digital items.
+- Reference catalogs from `007-catalogs` for `product_categories` and `service_types`.
+- Enforce SKU uniqueness per tenant.
+- Include a derived boolean `isStockTracked` based on the product type (e.g., physical goods are tracked, services are not).
 
-## User Scenarios & Testing *(mandatory)*
+### US2 - Stock Control
+As an inventory clerk, I need precise stock tracking and movement logs to maintain accurate inventory levels.
+- Implement strict concurrency control using database-level `CHECK constraint (stock >= 0)` and optimistic locking on `currentStock`.
+- All stock movements must be append-only to serve as an immutable audit trail.
+- Movement types enum: `PURCHASE`, `SALE`, `RETURN`, `ADJUSTMENT`, `CORRECTION`.
+- Automatically link `SALE` movements to an `Invoice` from `011-invoicing`.
 
-### User Story 1 - Product/Service Catalog (Priority: P1)
+### US3 - Fixed Assets
+As an operations manager, I need to track fixed assets distinct from regular inventory for accounting and assignment purposes.
+- Reference `asset_categories` catalog from `007-catalogs`.
+- Track `serialNumber` (must be unique per tenant).
+- Track `assignedToId` (reference to `TenantUser`, optional) for tracking who is currently in possession of the asset.
 
-A team member manages the product and service catalog. Each item has an SKU,
-name, description, category (from dynamic catalogs), unit price, cost,
-tax rate, and type (product vs. service). Products have stock tracking;
-services do not. Items are searchable by name and SKU.
+## Functional Requirements (FR)
 
-**Why this priority**: The product catalog is the foundation for inventory
-and sales. Without it, there are no items to stock, sell, or invoice.
+- **FR-013**: Stock level MUST be maintained as a denormalized field on the Product entity, updated atomically with each StockMovement creation within a single database transaction.
+- **FR-014**: StockMovement records are append-only. Updates or deletions are strictly prohibited. Any adjustments to previous movements MUST be made via new `CORRECTION` type movements.
+- **FR-015**: Product catalog and stock movement list endpoints MUST implement the DataTable pattern defined in `006-datatable`.
+- **FR-016**: Low-stock alerts MUST include the product name, SKU, current stock level, and the defined threshold in the notification payload.
+- **FR-017**: Access to the inventory module is gated. The module gate name in `Plan.moduleAccess` MUST be exactly `inventory`.
 
-**Independent Test**: Create a product with SKU and a service, verify both
-appear in the catalog. Search by SKU and verify the product is found.
+## Dependencies
+- **002**: Tenancy (tenantId isolation)
+- **004**: RBAC (requires permissions `inventory:CREATE`, `inventory:READ`, `inventory:UPDATE`, `inventory:DELETE`)
+- **005**: Audit Logging
+- **006**: DataTable
+- **007**: Catalogs (`product_categories`, `service_types`, `asset_categories`)
+- **008**: Plan Gating (module access control)
+- **011**: Invoicing (integration for automatic stock reduction upon sales)
 
-**Acceptance Scenarios**:
+## Non-Functional Requirements (NFR)
+- **NFR-001**: Product catalog list queries MUST respond in <500ms for up to 10,000 items.
+- **NFR-002**: Stock updates (transactional creation of movement + denormalized stock update) MUST complete in <100ms.
+- **NFR-003**: Stock movement log queries MUST respond in <500ms.
 
-1. **Given** a team member with inventory permissions, **When** they create
-   a product with SKU, name, price, cost, and category, **Then** the product
-   is stored and appears in the catalog with an initial stock level of 0.
-2. **Given** a team member, **When** they create a service item (no stock),
-   **Then** the service is stored without stock tracking fields.
-3. **Given** catalog items, **When** the member searches by partial SKU or
-   name, **Then** matching items are returned in a paginated list.
+## Key Entities
 
----
+### Product
+- `id` (UUID, PK)
+- `tenantId` (UUID, FK to Tenant)
+- `sku` (String, unique per tenant)
+- `name` (String)
+- `productCategoryId` (UUID, FK to CatalogItem)
+- `serviceTypeId` (UUID, FK to CatalogItem, nullable)
+- `type` (Enum: PHYSICAL, SERVICE, DIGITAL)
+- `isStockTracked` (Boolean, derived from type)
+- `currentStock` (Integer, default 0, versioned for optimistic locking)
+- `lowStockThreshold` (Integer, nullable)
+- Audit columns (`createdAt`, `updatedAt`, `createdBy`, `updatedBy`)
 
-### User Story 2 - Stock Control & Alerts (Priority: P2)
+### StockMovement
+- `id` (UUID, PK)
+- `tenantId` (UUID, FK to Tenant)
+- `productId` (UUID, FK to Product)
+- `type` (Enum: PURCHASE, SALE, RETURN, ADJUSTMENT, CORRECTION)
+- `quantity` (Integer, positive or negative)
+- `invoiceId` (UUID, nullable, FK to Invoice from 011)
+- `notes` (String, nullable)
+- Audit columns (append-only, so `createdAt`, `createdBy` typically suffice)
 
-A warehouse team member records stock movements: additions (purchases,
-returns) and subtractions (sales, adjustments) with a reason and quantity.
-Current stock level is updated in real time. When stock falls below a
-configurable low-stock threshold, the system generates an alert. Sales
-invoices automatically reduce stock for the invoiced products.
+### FixedAsset
+- `id` (UUID, PK)
+- `tenantId` (UUID, FK to Tenant)
+- `assetCategoryId` (UUID, FK to CatalogItem)
+- `name` (String)
+- `serialNumber` (String, unique per tenant)
+- `assignedToId` (UUID, nullable, FK to TenantUser)
+- Audit columns (`createdAt`, `updatedAt`, `createdBy`, `updatedBy`)
 
-**Why this priority**: Stock control prevents overselling and stockouts.
-Automatic reduction on sale connects inventory with the sales module.
-
-**Independent Test**: Add 100 units of a product, sell 30 via an invoice,
-verify stock is 70. Set low-stock threshold to 50, sell 25 more, verify
-stock is 45 and a low-stock alert is generated.
-
-**Acceptance Scenarios**:
-
-1. **Given** a product with current stock of 0, **When** a stock addition
-   of 100 units is recorded with reason "Purchase," **Then** the product's
-   stock level is updated to 100.
-2. **Given** a product with stock of 100 and a low-stock threshold of 50,
-   **When** 55 units are sold via an invoice, **Then** the stock level
-   becomes 45 and a low-stock alert is generated.
-3. **Given** a product with stock of 10, **When** a sale of 15 units is
-   attempted, **Then** the system rejects the sale indicating insufficient
-   stock.
-
----
-
-### User Story 3 - Fixed-Asset Management (Priority: P3)
-
-A team member registers fixed assets (computers, furniture, vehicles) with
-name, description, acquisition value, acquisition date, and status (Active,
-Disposed). Fixed assets are tracked separately from saleable inventory.
-A list of active assets with their total value is available.
-
-**Why this priority**: Fixed-asset tracking is important for operational
-accountability and basic financial reporting, but is less critical than
-saleable inventory.
-
-**Independent Test**: Register a fixed asset, verify it appears in the
-active assets list with the correct value. Mark it as "Disposed" and verify
-it no longer appears in the active list.
-
-**Acceptance Scenarios**:
-
-1. **Given** a team member, **When** they register a fixed asset with
-   name, value, acquisition date, and status, **Then** the asset is stored
-   and appears in the active assets list.
-2. **Given** an active fixed asset, **When** it is marked as "Disposed,"
-   **Then** it no longer appears in the active assets list but is preserved
-   in the full asset history.
-3. **Given** multiple active fixed assets, **When** the member views the
-   asset summary, **Then** the total value of all active assets is
-   displayed.
-
-### Edge Cases
-
-- Accessing inventory endpoints from a tenant on the Free plan — MUST
-  return 403 with a message indicating the feature requires Pro or Premium.
-- Stock movement with negative quantity — MUST be rejected; subtractions
-  use a separate operation type.
-- SKU uniqueness — MUST be unique within a tenant. Attempting to create
-  a duplicate SKU MUST return a validation error.
-- Stock goes negative due to a race condition — the system MUST use
-  database-level constraints to prevent negative stock values.
-
-## Requirements *(mandatory)*
-
-### Functional Requirements
-
-- **FR-001**: System MUST allow creating, updating, and listing products
-  and services with SKU, name, description, category (catalog), unit price,
-  cost, tax rate, and type (product/service).
-- **FR-002**: Products MUST have stock tracking; services MUST NOT.
-- **FR-003**: SKU MUST be unique within a tenant.
-- **FR-004**: System MUST allow recording stock movements (additions and
-  subtractions) with quantity, reason, and timestamp.
-- **FR-005**: System MUST maintain a real-time current stock level per
-  product updated on each movement.
-- **FR-006**: System MUST generate low-stock alerts when stock falls below
-  a configurable threshold.
-- **FR-007**: Sales invoices MUST automatically reduce stock for invoiced
-  products upon invoice confirmation.
-- **FR-008**: System MUST reject sales that would result in negative
-  stock levels.
-- **FR-009**: System MUST allow registering fixed assets with name,
-  description, acquisition value, acquisition date, and status.
-- **FR-010**: Fixed assets MUST be tracked separately from saleable
-  inventory.
-- **FR-011**: Inventory module MUST be gated to Pro/Premium plans — Free
-  plan tenants MUST receive 403 with an upgrade prompt on any inventory
-  endpoint.
-- **FR-012**: All inventory data MUST be tenant-scoped with RBAC
-  enforcement (inventory:CREATE, inventory:READ, inventory:UPDATE,
-  inventory:DELETE).
-
-### Key Entities
-
-- **Product**: Saleable item. Attributes: SKU, name, description, category
-  (catalog), unit price, cost, tax rate, type (product/service), current
-  stock level (products only), low-stock threshold.
-- **StockMovement**: Inventory transaction. Attributes: linked Product,
-  type (addition/subtraction), quantity, reason, timestamp.
-- **FixedAsset**: Operational asset. Attributes: name, description,
-  acquisition value, acquisition date, status (Active/Disposed).
-
-## Success Criteria *(mandatory)*
-
-### Measurable Outcomes
-
-- **SC-001**: A team member can add a new product to the catalog in under
-  30 seconds.
-- **SC-002**: Stock levels are updated in real time — a sale of 10 units
-  reflects immediately in the product's stock level, verified by automated
-  tests.
-- **SC-003**: Zero instances of negative stock values — database-level
-  constraints prevent it, verified by attempted overselling tests.
-- **SC-004**: Free plan tenants receive 403 on 100% of inventory endpoints
-  — verified by automated tests scanning all inventory routes.
+## Edge Cases
+- **Concurrent Stock Movements**: Handled via database constraints (`stock >= 0`) and optimistic locking on the `Product.currentStock` field.
+- **Product Type Change**: Attempting to change a product from physical to service (or vice versa) when existing stock movements exist MUST be handled carefully; typically prevented or requiring stock clearance first.
 
 ## Assumptions
-
-- Inventory module access is controlled by the Plan's module-access gates.
-  The gate name is "inventory" or "logistics."
-- Stock movements are an append-only log; corrections are made via
-  adjustment movements (e.g., subtraction with reason "Correction").
-- Low-stock alerts are delivered as in-app notifications; email alerts
-  are a future enhancement.
-- Fixed-asset depreciation is out of scope for this iteration — assets are
-  tracked at acquisition value only.
-- Tax rate is a percentage stored per product; it defaults to a configurable
-  tenant-level default.
+- The module gate name in `Plan.moduleAccess` is exactly `'inventory'`.

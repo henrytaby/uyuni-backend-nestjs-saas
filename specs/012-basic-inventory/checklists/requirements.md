@@ -1,35 +1,41 @@
-# Specification Quality Checklist: [FEATURE]
+# 012-basic-inventory Implementation Checklist
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2026-07-07
-**Feature**: spec.md
+## Module Setup
+- [ ] Create `InventoryModule` module.
+- [ ] Implement plan gating using `inventory` in `Plan.moduleAccess` (FR-017).
 
-## Content Quality
+## Database Schema
+- [ ] Create `Product` entity with `tenantId`, `sku` (unique per tenant), and audit columns.
+- [ ] Add `currentStock` (optimistic locking) and denormalization logic to `Product` (FR-013).
+- [ ] Add `isStockTracked` derived boolean to `Product`.
+- [ ] Create `StockMovement` entity (append-only) with `PURCHASE`, `SALE`, `RETURN`, `ADJUSTMENT`, `CORRECTION` enum (FR-014).
+- [ ] Add constraint: `stock >= 0`.
+- [ ] Create `FixedAsset` entity with `tenantId`, `serialNumber` (unique per tenant), and `assignedToId` (FK to `TenantUser`).
 
-- [x] No implementation details (languages, frameworks, APIs)
-- [x] Focused on user value and business needs
-- [x] Written for non-technical stakeholders
-- [x] All mandatory sections completed
+## Integration
+- [ ] Integrate catalogs (`product_categories`, `service_types`, `asset_categories`) from 007.
+- [ ] Integrate invoicing module (011) for automatic stock reduction upon SALE movements.
 
-## Requirement Completeness
+## Endpoints
+- [ ] Create Product CRUD endpoints (implementing DataTable pattern per 006 for lists) (FR-015).
+- [ ] Create StockMovement append endpoint.
+- [ ] Create StockMovement list endpoint (implementing DataTable pattern per 006) (FR-015).
+- [ ] Create FixedAsset CRUD endpoints.
 
-- [x] No [NEEDS CLARIFICATION] markers remain
-- [x] Requirements are testable and unambiguous
-- [x] Success criteria are measurable
-- [x] Success criteria are technology-agnostic (no implementation details)
-- [x] All acceptance scenarios are defined
-- [x] Edge cases are identified
-- [x] Scope is clearly bounded
-- [x] Dependencies and assumptions identified
+## Business Logic
+- [ ] Implement atomic update of `Product.currentStock` when `StockMovement` is recorded (FR-013).
+- [ ] Implement low-stock alert logic triggered upon stock updates (FR-016).
+- [ ] Enforce SKU uniqueness per tenant.
+- [ ] Enforce FixedAsset serial number uniqueness per tenant.
+- [ ] Handle concurrent stock updates correctly (optimistic locking + constraints).
+- [ ] Handle Product type changes carefully (preventing physical<->service changes if stock exists).
 
-## Feature Readiness
+## Security & RBAC
+- [ ] Enforce tenant isolation on all queries and mutations (002).
+- [ ] Require `inventory:CRUD` permissions for relevant operations (004).
+- [ ] Ensure audit logging is active for entities (005).
 
-- [x] All functional requirements have clear acceptance criteria
-- [x] User scenarios cover primary flows
-- [x] Feature meets measurable outcomes defined in Success Criteria
-- [x] No implementation details leak into specification
-
-## Notes
-
-- All items pass initial validation
-- Spec is ready for /speckit.clarify or /speckit.plan
+## Performance (NFRs)
+- [ ] Verify Product catalog query <500ms for 10K items (NFR-001).
+- [ ] Verify stock update is atomic and completes in <100ms (NFR-002).
+- [ ] Verify stock movement log query responds in <500ms (NFR-003).

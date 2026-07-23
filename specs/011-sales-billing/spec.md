@@ -1,172 +1,105 @@
-# Feature Specification: Sales & Billing
+# 011: Sales & Billing
+**Status**: Ready
+**Updated**: 2026-07-23 (Enterprise Architect Review — v2)
 
-**Feature Branch**: `011-sales-billing`
+## Description
+This module provides a comprehensive sales and billing subsystem encompassing Quotations, Invoicing, and Petty Cash/Cashbook tracking. It supports full financial workflows including state transitions, precise document referencing, and dynamic catalog integration.
 
-**Created**: 2026-07-07
+## Dependencies
+- **002-multi-tenant**: Tenant isolation (`tenantId`).
+- **004-rbac**: Permission enforcement (`sales:CRUD`).
+- **005-audit-logging**: System auditing for all financial transactions.
+- **006-datatable**: Filtering, pagination, sorting (DataTable pattern) for lists.
+- **007-catalogs**: Dynamic categories (`income_categories`, `expense_categories`, `payment_methods`).
+- **009-crm**: Client linking for quotations and invoices (`clientId`).
 
-**Status**: Draft
+## User Stories
 
-**Input**: User description: "Implement sales and billing with quotation creation, invoice/receipt issuance, payment tracking, and basic petty cash (income/expense) recording."
+### US1 - Quotations
+As a sales agent, I want to create, send, and manage quotations, so I can provide pricing to clients.
+- **Status Pipeline**: `DRAFT` → `SENT` → `ACCEPTED` / `REJECTED`, with auto-`EXPIRED` based on validity tracking.
+- Sequential reference number generation: Tenant-scoped, formatted as `QUO-TENANT-0001`.
+- Track quotation validity period.
 
-## User Scenarios & Testing *(mandatory)*
+### US2 - Invoices
+As a billing manager, I want to manage the invoice lifecycle and track payments, so I can ensure revenue collection.
+- **Status Pipeline**: `DRAFT` → `ISSUED` → `PARTIAL` → `PAID`. (Also allows `DRAFT` → `VOID` and `ISSUED` → `VOID`).
+- Uses `InvoiceLineItem` for detailed billing structures.
+- Sequential reference number: Tenant-scoped, formatted as `INV-TENANT-0001`.
+- Linked to CRM Clients from `009`.
+- Includes a structured void/cancel flow.
 
-### User Story 1 - Quotation Management (Priority: P1)
+### US3 - Petty Cash
+As an accountant, I want to log minor cash movements (income and expenses), so the business has an accurate daily cashbook.
+- Uses dynamic catalogs from `007` for `income_categories` and `expense_categories`.
+- Supports period-based filtering using the DataTable pattern.
 
-A sales team member creates a quotation for a client. The quotation contains
-line items (product/service description, quantity, unit price), subtotal,
-tax, and total. The quotation has a validity period and a status flow:
-Draft → Sent → Accepted / Rejected / Expired. An accepted quotation can be
-converted into an invoice.
+## Functional Requirements
+- **FR-001**: CRUD on Quotations, Invoices, and Petty Cash records.
+- **FR-002**: Apply tenant scoping on all queries.
+- **FR-013**: Reference numbers MUST be auto-generated with tenant-specific prefix and sequential numbering. Numbers MUST be unique per tenant and gap-free within each document type.
+- **FR-014**: Quotation-to-invoice conversion MUST be atomic. If invoice creation fails, the quotation status remains unchanged.
+- **FR-015**: Void/cancelled invoices MUST reverse any stock movements (if integrated with 012) and restore payment records. Voiding is a soft operation (status change, not deletion).
+- **FR-016**: All sales list endpoints MUST use the DataTable pattern from 006.
+- **FR-017**: Payment methods MUST come from the `payment_methods` dynamic catalog from 007, not a fixed enum.
 
-**Why this priority**: Quotations are the beginning of the sales process.
-Without them, there is no formalized offer-to-invoice flow.
+## Non-Functional Requirements
+- **NFR-001**: Invoice generation must complete in <2s.
+- **NFR-002**: Cash flow summary aggregation must complete in <1s for 100+ entries.
+- **NFR-003**: Reference number generation must be atomic and guarantee no gaps even under concurrency.
 
-**Independent Test**: Create a quotation with line items, send it to a
-client, accept it, and convert it to an invoice. Verify the invoice inherits
-the quotation's line items and totals.
+## Entities
 
-**Acceptance Scenarios**:
+### Quotation
+- `id` (UUID)
+- `tenantId` (UUID)
+- `clientId` (UUID) - FK to CRM
+- `referenceNumber` (String) - e.g., QUO-TENANT-0001
+- `status` (Enum: DRAFT, SENT, ACCEPTED, REJECTED, EXPIRED)
+- `currency` (String)
+- `totalAmount` (Decimal)
+- `validUntil` (Date)
+- standard audit columns (createdAt, updatedAt, deletedAt)
 
-1. **Given** a sales team member and an existing client, **When** they
-   create a quotation with line items, validity period, and client, **Then**
-   the quotation is stored with status "Draft" and calculated totals.
-2. **Given** a draft quotation, **When** the member changes the status to
-   "Sent," **Then** the quotation is marked as sent and the validity period
-   starts tracking.
-3. **Given** an accepted quotation, **When** the member converts it to an
-   invoice, **Then** an invoice is created with the same line items, client,
-   and totals, and the quotation is linked to the invoice.
+### Invoice
+- `id` (UUID)
+- `tenantId` (UUID)
+- `clientId` (UUID) - FK to CRM
+- `quotationId` (UUID, optional)
+- `referenceNumber` (String) - e.g., INV-TENANT-0001
+- `status` (Enum: DRAFT, ISSUED, PARTIAL, PAID, VOID)
+- `currency` (String)
+- `totalAmount` (Decimal)
+- `paidAmount` (Decimal)
+- standard audit columns (createdAt, updatedAt, deletedAt)
 
----
+### InvoiceLineItem
+- `id` (UUID)
+- `invoiceId` (UUID)
+- `description` (String)
+- `quantity` (Decimal)
+- `unitPrice` (Decimal)
+- `totalPrice` (Decimal)
+- standard audit columns
 
-### User Story 2 - Invoice & Payment Tracking (Priority: P2)
+### PettyCash
+- `id` (UUID)
+- `tenantId` (UUID)
+- `type` (Enum: INCOME, EXPENSE)
+- `categoryId` (UUID) - FK to dynamic catalog (income_categories / expense_categories)
+- `paymentMethodId` (UUID) - FK to dynamic catalog (payment_methods)
+- `amount` (Decimal)
+- `currency` (String)
+- `description` (String)
+- `date` (Date)
+- standard audit columns
 
-A team member issues an invoice (either from an accepted quotation or
-standalone). The invoice tracks payment status: Pending, Partial, Paid.
-Partial payments are recorded with amount and date. The invoice shows the
-remaining balance. A payment receipt can be generated when the invoice is
-fully or partially paid.
-
-**Why this priority**: Invoicing and payment tracking are essential for
-cash flow management — the core of business operations.
-
-**Independent Test**: Create an invoice, record a partial payment, verify
-the remaining balance, record the final payment, verify the invoice status
-changes to "Paid."
-
-**Acceptance Scenarios**:
-
-1. **Given** a team member, **When** they issue an invoice with line items
-   and client, **Then** the invoice is created with status "Pending" and
-   calculated totals.
-2. **Given** a pending invoice with a total of $1000, **When** a partial
-   payment of $400 is recorded, **Then** the invoice status changes to
-   "Partial" and the remaining balance is $600.
-3. **Given** a partially paid invoice, **When** the remaining balance is
-   paid, **Then** the invoice status changes to "Paid."
-
----
-
-### User Story 3 - Petty Cash (Income/Expense Recording) (Priority: P3)
-
-A team member records day-to-day income and expenses (petty cash). Each
-entry has an amount, type (income/expense), category (from dynamic catalogs),
-date, and description. A simple cash flow summary shows total income, total
-expenses, and the running balance for a given period.
-
-**Why this priority**: Petty cash tracking is the simplest form of financial
-control — essential for small businesses that need visibility into daily cash
-flow.
-
-**Independent Test**: Record an income of $500 and an expense of $200. View
-the cash flow summary and verify the net balance is $300.
-
-**Acceptance Scenarios**:
-
-1. **Given** a team member, **When** they record an income entry with
-   amount, category, date, and description, **Then** the entry is stored
-   and appears in the cash flow list.
-2. **Given** a team member, **When** they record an expense entry, **Then**
-   the entry is stored with type "expense" and reduces the running balance.
-3. **Given** multiple income and expense entries in a period, **When** the
-   member views the cash flow summary, **Then** total income, total
-   expenses, and net balance are displayed for the selected period.
-
-### Edge Cases
-
-- Quotation expires after validity period — system SHOULD auto-update status
-  to "Expired" or flag it for manual review.
-- Invoice amount is zero (pro-bono or complimentary) — MUST be allowed.
-- Partial payment exceeds the remaining balance — MUST be rejected with a
-  validation error.
-- Currency handling — all amounts are in a single currency per tenant.
-  Multi-currency is out of scope for this iteration.
-
-## Requirements *(mandatory)*
-
-### Functional Requirements
-
-- **FR-001**: System MUST allow creating, updating, and listing quotations
-  with line items (description, quantity, unit price), client reference,
-  validity period, and status.
-- **FR-002**: Quotation statuses MUST include: Draft, Sent, Accepted,
-  Rejected, Expired.
-- **FR-003**: System MUST calculate quotation totals (subtotal, tax, total)
-  from line items automatically.
-- **FR-004**: System MUST allow converting an accepted quotation into an
-  invoice with inherited line items and totals.
-- **FR-005**: System MUST allow creating standalone invoices (not from a
-  quotation) with line items, client reference, and payment status.
-- **FR-006**: Invoice payment statuses MUST include: Pending, Partial, Paid.
-- **FR-007**: System MUST allow recording partial payments against an
-  invoice with amount, date, and payment method.
-- **FR-008**: System MUST calculate and display the remaining balance on
-  partially paid invoices.
-- **FR-009**: System MUST allow recording income and expense entries with
-  amount, type, category (catalog), date, and description.
-- **FR-010**: System MUST provide a cash flow summary for a given period
-  showing total income, total expenses, and net balance.
-- **FR-011**: All amounts MUST include a currency indicator. Single
-  currency per tenant in this iteration.
-- **FR-012**: All sales data MUST be tenant-scoped with RBAC enforcement
-  (sales:CREATE, sales:READ, sales:UPDATE, sales:DELETE).
-
-### Key Entities
-
-- **Quotation**: Sales offer. Attributes: reference number, client, line
-  items, subtotal, tax, total, validity start/end, status.
-- **QuotationLineItem**: Line detail. Attributes: description, quantity,
-  unit price, line total, linked Quotation.
-- **Invoice**: Billing document. Attributes: reference number, client,
-  line items, subtotal, tax, total, payment status, linked Quotation
-  (optional).
-- **Payment**: Payment record. Attributes: amount, date, payment method,
-  linked Invoice.
-- **CashEntry**: Income/expense record. Attributes: amount, type
-  (income/expense), category (catalog), date, description.
-
-## Success Criteria *(mandatory)*
-
-### Measurable Outcomes
-
-- **SC-001**: A sales team member can create a quotation with 5 line items
-  in under 1 minute.
-- **SC-002**: Quotation-to-invoice conversion completes in under 3 seconds
-  with all line items and totals accurately transferred.
-- **SC-003**: Payment tracking maintains an accurate remaining balance —
-  verified by automated tests with multiple partial payments.
-- **SC-004**: Cash flow summary for a month with 100+ entries loads in
-  under 2 seconds.
+## Edge Cases
+- **Concurrent reference number generation**: Must use database locking or sequence generators to ensure gap-free unique numbering per tenant.
+- **Voided invoice with existing payments**: Requires compensating transactions or strict prevention (e.g., cannot void if fully/partially paid unless payments are rolled back first).
+- **Expired quotations**: Automatically transitioning quotations to EXPIRED once their validity period ends.
 
 ## Assumptions
-
-- Tax rate is a configurable percentage applied uniformly to the subtotal.
-  Line-item-level tax rates are out of scope for this iteration.
-- Reference numbers (quotation #, invoice #) are auto-generated with a
-  tenant-specific prefix and sequential numbering.
-- Payment methods are a fixed enum (Cash, Bank Transfer, Card, Other).
-  Additional methods can be added via catalogs in a future iteration.
-- Currency is set at the tenant level during provisioning. Default: USD.
-  Multi-currency support is a future enhancement.
-- Income/expense categories come from the "Income Categories" and "Expense
-  Categories" dynamic catalogs.
+- Tax rate is configured at the tenant level.
+- Reference number format (`PREFIX-TENANT-XXXX`) is standardized.
+- `payment_methods` and other categories exist in the catalogs module.
