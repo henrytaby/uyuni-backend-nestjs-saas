@@ -30,6 +30,8 @@ Implement granular Role-Based Access Control with module-scoped, action-granular
 
 **Scale/Scope**: Hundreds of roles per tenant; thousands of concurrent authenticated users; ~7 modules × 4 actions = ~28 permission slots per role.
 
+**Guard Execution Order**: `ThrottlerGuard → JwtAuthGuard → TenantGuard → PermissionsGuard → PlatformAdminGuard`
+
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
@@ -86,10 +88,9 @@ src/
 │       │   ├── rbac.service.ts            # Business logic (role management)
 │       │   └── permission-resolver.service.ts # Resolves effective permissions per user+tenant
 │       └── dto/
-│           ├── create-role.dto.ts
-│           ├── update-role.dto.ts
-│           ├── assign-role.dto.ts
-│           └── permission.dto.ts
+│           ├── role.dto.ts              # CreateRoleDto + UpdateRoleDto
+│           ├── role-assignment.dto.ts   # RoleAssignmentDto
+│           └── permission.dto.ts        # PermissionDto
 └── infrastructure/
     └── prisma/
         └── prisma.service.ts              # Existing

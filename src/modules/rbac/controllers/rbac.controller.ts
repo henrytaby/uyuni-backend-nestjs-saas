@@ -24,14 +24,28 @@ export class RbacController {
       req.user.id,
       req.tenantId,
     );
-    return Object.fromEntries(effectivePermissions);
+    
+    const permissions = Array.from(effectivePermissions.entries()).map(([key, scope]) => {
+      const [module, action] = key.split(':');
+      return { module, action, scope };
+    });
+    
+    const roles = await this.rbacService.getUserRoles(req.user.id, req.tenantId);
+    
+    return {
+      userId: req.user.id,
+      tenantId: req.tenantId,
+      permissions,
+      roles: roles.map((r: any) => ({ id: r.id, name: r.name })),
+      isPlatformAdmin: req.user.isPlatformAdmin ?? false,
+    };
   }
 
   @Get('permissions/modules')
   @ApiOperation({ summary: 'Get allowed module registry list' })
   @ApiResponse({ status: 200, description: 'List of allowed modules' })
   getModules() {
-    return ['tenancy', 'crm', 'agenda', 'sales', 'inventory', 'catalogs', 'audit'];
+    return { modules: ['tenancy', 'crm', 'agenda', 'sales', 'inventory', 'catalogs', 'audit'] };
   }
 
   @Post('roles')

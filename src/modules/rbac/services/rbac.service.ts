@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service.js';
 import { CreateRoleDto, UpdateRoleDto } from '../dto/role.dto.js';
 import { RoleAssignmentDto } from '../dto/role-assignment.dto.js';
@@ -31,8 +31,24 @@ export class RbacService {
     });
   }
 
+  async getUserRoles(userId: string, tenantId: string) {
+    const tenantUser = await this.prisma.tenantUser.findFirst({
+      where: { userId, tenantId },
+      include: {
+        roleAssignments: {
+          where: { isActive: true },
+          include: { role: true },
+        },
+      },
+    });
+    if (!tenantUser) return [];
+    return tenantUser.roleAssignments
+      .filter(a => a.role.isActive)
+      .map(a => a.role);
+  }
+
   async getRoles(tenantId: string) {
-    return this.prisma.role.findMany({
+    const roles = await this.prisma.role.findMany({
       where: {
         OR: [
           { tenantId: null },
@@ -44,6 +60,7 @@ export class RbacService {
       },
       orderBy: { name: 'asc' },
     });
+    return { data: roles, total: roles.length };
   }
 
   async updateRole(id: string, dto: UpdateRoleDto, tenantId: string, userId: string) {
@@ -147,15 +164,24 @@ export class RbacService {
 
     if (!role) throw new NotFoundException('Role not found');
     if (role.isSystem) throw new ForbiddenException('Cannot modify system roles');
-    if (role.roleAssignments.length > 0) throw new BadRequestException('Role has active assignments');
+    
+    const activeAssignments = role.roleAssignments.filter(a => a.isActive);
+    if (activeAssignments.length > 0) throw new ConflictException({
+      message: 'Cannot delete role with active assignments. Reassign users first.',
+      activeAssignments: activeAssignments.length,
+    });
 
-    return this.prisma.role.delete({ where: { id } });
+    return this.prisma.role.update({
+      where: { id },
+      data: { isActive: false },
+    });
   }
 
   async getAssignments(tenantId: string) {
-    return this.prisma.roleAssignment.findMany({
+    const assignments = await this.prisma.roleAssignment.findMany({
       where: { tenantUser: { tenantId } },
       include: { role: true, tenantUser: true }
     });
+    return { data: assignments, total: assignments.length };
   }
 }

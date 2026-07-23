@@ -40,6 +40,8 @@ npm run start:dev
 
 **Expected**: READ succeeds, CREATE returns 403 with "Insufficient permissions".
 
+*Note: CRM endpoints referenced below will be available after the CRM domain module is implemented. For now, test with `/tenancy/tenant-users` endpoints which have @RequirePermissions decorators.*
+
 ### Scenario 2: Verify Ownership Scope (US2)
 
 **Goal**: Confirm that `OWN` scope restricts visibility to creator's records.
@@ -55,6 +57,8 @@ npm run start:dev
 ```
 
 **Expected**: OWN-scoped users see only their own records. ANY-scoped users see all.
+
+*Note: CRM endpoints referenced below will be available after the CRM domain module is implemented. For now, test with `/tenancy/tenant-users` endpoints which have @RequirePermissions decorators.*
 
 ### Scenario 3: Custom Role Management (US4)
 

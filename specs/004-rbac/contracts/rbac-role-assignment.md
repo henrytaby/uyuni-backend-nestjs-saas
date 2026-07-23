@@ -46,7 +46,7 @@
 **Request Body:**
 ```json
 {
-  "userId": "uuid-target-user",
+  "tenantUserId": "uuid-target-user",
   "roleId": "uuid-role"
 }
 ```
@@ -55,15 +55,14 @@
 ```json
 {
   "id": "uuid-new-assignment",
-  "userId": "uuid-target-user",
+  "tenantUserId": "uuid-target-user",
   "roleId": "uuid-role",
   "assignedAt": "2026-07-22T22:00:00Z"
 }
 ```
+*Note: If the assignment already exists but was deactivated, it will be re-activated.*
 
 **Response (404 Not Found):** User is not a member of this tenant.
-
-**Response (409 Conflict):** User already has this role assigned.
 
 ---
 
