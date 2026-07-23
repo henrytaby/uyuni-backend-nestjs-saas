@@ -167,10 +167,10 @@ This section demonstrates how a specific domain module integrates the Generic Re
 ```typescript
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { RequirePermissions } from '@/core/auth/decorators/require-permissions.decorator';
-import { PermissionAction } from '@/core/auth/types/permission-action.enum';
-import { DataTableRequestDto } from '@/core/database/dto/datatable-request.dto';
-import { CatalogCategoryService } from './catalog-category.service';
+import { RequirePermissions } from '../../../common/decorators/require-permissions.decorator.js';
+import { PermissionAction } from '@prisma/client';
+import { DataTableRequestDto } from '../../../common/dto/datatable-request.dto.js';
+import { CatalogCategoryService } from './catalog-category.service.js';
 
 @Controller('catalogs/categories')
 @ApiTags('Catalogs')
@@ -192,8 +192,8 @@ export class CatalogCategoryController {
 
 ```typescript
 import { Injectable } from '@nestjs/common';
-import { DataTableRequestDto } from '@/core/database/dto/datatable-request.dto';
-import { CatalogCategoryRepository } from './catalog-category.repository';
+import { DataTableRequestDto } from '../../../common/dto/datatable-request.dto.js';
+import { CatalogCategoryRepository } from './catalog-category.repository.js';
 
 @Injectable()
 export class CatalogCategoryService {
@@ -209,9 +209,9 @@ export class CatalogCategoryService {
 
 ```typescript
 import { Injectable } from '@nestjs/common';
-import { TenantScopedRepository } from '@/core/database/repositories/tenant-scoped.repository';
-import { RepositoryConfig } from '@/core/database/types/repository-config.type';
-import { PrismaService } from '@/core/database/prisma.service';
+import { TenantScopedRepository } from '../../../common/repository/tenant-scoped.repository.js';
+import { RepositoryConfig } from '../../../common/repository/repository-config.interface.js';
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service.js';
 import { CatalogCategory } from '@prisma/client';
 
 @Injectable()

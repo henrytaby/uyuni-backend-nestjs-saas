@@ -12,9 +12,9 @@ This is an INFRASTRUCTURE feature — it does NOT define new database models/tab
 | `pageSize` | `number` | No | `@IsOptional()`, `@Type(() => Number)`, `@IsInt()`, `@Min(1)`, `@Max(100)` | Items per page, default 25, min 1, max 100, integer |
 | `sortField` | `string` | No | `@IsOptional()`, `@IsString()` | Single sort field name |
 | `sortOrder` | `'asc' \| 'desc'` | No | `@IsOptional()`, `@IsIn(['asc', 'desc'])` | Sort direction, default 'desc' |
-| `sort` | `string` | No | `@IsOptional()`, `@IsString()` | JSON array of `{ field: string, order: 'asc' \| 'desc' }` for multi-column sort, max 3 (validated as JSON in repository) |
-| `searchTerm` | `string` | No | `@IsOptional()`, `@IsString()` | Global search string, case-insensitive partial matching |
-| `filters` | `string` | No | `@IsOptional()`, `@IsString()` | JSON-encoded object mapping field names to filter conditions (validated as JSON in repository) |
+| `sort` | `string` | No | `@IsOptional()`, `@IsString()`, `@MaxLength(2000)` | JSON array of `{ field: string, order: 'asc' \| 'desc' }` for multi-column sort, max 3 (validated as JSON in repository) |
+| `searchTerm` | `string` | No | `@IsOptional()`, `@IsString()`, `@MaxLength(2000)` | Global search string, case-insensitive partial matching |
+| `filters` | `string` | No | `@IsOptional()`, `@IsString()`, `@MaxLength(2000)` | JSON-encoded object mapping field names to filter conditions (validated as JSON in repository) |
 | `includeDeleted` | `boolean` | No | `@IsOptional()`, `@Type(() => Boolean)`, `@IsBoolean()` | Include soft-deleted records, default false (requires `audit:read` permission) |
 
 *Note: All fields are decorated with `@ApiPropertyOptional()` for Swagger.*

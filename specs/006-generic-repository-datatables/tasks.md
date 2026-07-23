@@ -33,7 +33,7 @@ Since this is an infrastructure feature in an existing project, setup is minimal
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
 - [ ] T002 [P] Create `RepositoryConfig`, `FilterCondition`, `SortItem` interfaces in `src/common/repository/repository-config.interface.ts`
-- [ ] T003 [P] Create `DataTableRequestDto` in `src/common/dto/datatable-request.dto.ts` (with class-validator decorators and @ApiPropertyOptional)
+- [ ] T003 [P] Create `DataTableRequestDto` in `src/common/dto/datatable-request.dto.ts` (with class-validator decorators, @ApiPropertyOptional, and @MaxLength(2000) on JSON strings to prevent DoS)
 - [ ] T004 [P] Create `DataTableResponseDto` and `DataTableMetaDto` in `src/common/dto/datatable-response.dto.ts` (with @ApiProperty)
 - [ ] T005 Create abstract `TenantScopedRepository<TEntity>` base structure in `src/common/repository/tenant-scoped.repository.ts`
 
@@ -51,7 +51,7 @@ Since this is an infrastructure feature in an existing project, setup is minimal
 
 - [ ] T006 [P] [US1] Implement `normalizePagination()` method in `src/common/repository/tenant-scoped.repository.ts` to handle defaults and maximums (max 100)
 - [ ] T007 [P] [US1] Implement `validateFieldAllowed()` helper in `src/common/repository/tenant-scoped.repository.ts`
-- [ ] T008 [US1] Implement `buildOrderBy()` method in `src/common/repository/tenant-scoped.repository.ts` handling `sort` JSON array or `sortField`/`sortOrder` fallback with validation
+- [ ] T008 [US1] Implement `buildOrderBy()` method in `src/common/repository/tenant-scoped.repository.ts` handling `sort` JSON array (with field deduplication) or `sortField`/`sortOrder` fallback with validation
 - [ ] T009 [US1] Implement `formatResponse()` method in `src/common/repository/tenant-scoped.repository.ts` to calculate totalPages, hasNextPage, hasPreviousPage
 - [ ] T010 [US1] Implement `findAll()` main method in `src/common/repository/tenant-scoped.repository.ts` using `Promise.all([findMany, count])` with pagination, sorting, and merging `config.includes` to eagerly load relations
 
@@ -113,7 +113,7 @@ Since this is an infrastructure feature in an existing project, setup is minimal
 - [ ] T019 [P] Export all DTOs and classes via an index file `src/common/repository/index.ts`
 - [ ] T020 Write unit tests for `TenantScopedRepository` in `test/unit/common/repository/tenant-scoped.repository.spec.ts`
 - [ ] T021 Write e2e contract test for datatables in `test/e2e/datatable.e2e-spec.ts`
-- [ ] T022 Write automated anti-leakage tests in `test/e2e/tenant-isolation.e2e-spec.ts` proving cross-tenant and ownership isolation invariants
+- [ ] T022 Write automated anti-leakage tests in `test/e2e/tenant-isolation.e2e-spec.ts` proving cross-tenant and ownership isolation invariants. **CRITICAL: You MUST ensure the test entity is registered in `TENANT_SCOPED_MODELS` (in `tenant-scoped-models.ts`), otherwise the Prisma extension will bypass it and isolation will fail silently.**
 - [ ] T023 Run performance baselines for pagination and global search using a 100K record seed script to verify NFR-001/NFR-002
 - [ ] T024 Run quickstart.md validation scenarios to ensure complete success
 
@@ -152,11 +152,11 @@ Since this is an infrastructure feature in an existing project, setup is minimal
 2. Complete Phase 2: Foundational (CRITICAL)
 3. Complete Phase 3: User Story 1
 4. Complete Phase 4: User Story 3
-5. **STOP and VALIDATE**: Test basic paginated listing with tenant scoping.
+5. **STOP and VALIDATE**: Write and execute unit tests (T020) and anti-leakage tests (T022) to prove MVP functionality before proceeding. Do not wait for Phase 7.
 
-### Incremental Delivery
+### Incremental Delivery (TDD Approach)
 
-1. Complete MVP (US1 + US3) → Foundation ready and functional
-2. Add User Story 2 (Search) → Test independently
-3. Add User Story 4 (Filters) → Test independently
-4. Execute Polish phase for migration and full test coverage
+1. Complete MVP (US1 + US3) + Tests → Foundation ready, secure, and functional
+2. Add User Story 2 (Search) → Write test → Verify
+3. Add User Story 4 (Filters) → Write test → Verify
+4. Execute remaining Polish phase tasks (T018, T019, T021, T023, T024) for refactoring, e2e, and performance baselines.

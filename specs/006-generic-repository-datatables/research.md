@@ -30,9 +30,10 @@
 - **Decision**: Field validation will happen at runtime in the repository's `buildOrderBy` and `buildWhere` methods. Invalid fields will trigger a `BadRequestException` containing the list of allowed fields.
 - **Rationale**: Validations are entity-specific and declared in the `RepositoryConfig`, meaning they cannot be statically validated at the generic DTO level.
 
-### 6. includeDeleted & RBAC Check
-- **Decision**: Provide an `includeDeleted` boolean in `DataTableRequestDto`. The repository passes `includeDeleted: true` in Prisma args, which the existing soft-delete extension honors. RBAC checking for the `audit:read` permission will be enforced at the controller level via `@RequirePermissions`.
-- **Rationale**: Maintains a clean separation of concerns: the repository handles pure data access logic, and the controller handles authorization checks.
+### 6. includeDeleted & RBAC Check [SUPERSEDED]
+- **Decision (Superseded)**: Provide an `includeDeleted` boolean in `DataTableRequestDto`. RBAC checking for the `audit:read` permission will be enforced at the controller level via `@RequirePermissions`.
+- **Rationale**: Maintains a clean separation of concerns.
+- **Update**: *This decision was SUPERSEDED in Phase 1 Design to comply with Constitution Principle I. Relying on developers to remember `@RequirePermissions` violates architectural enforcement. The final design uses an `IncludeDeletedInterceptor` and an `@AllowIncludeDeleted()` decorator.*
 
 ### 7. Parallel Query Execution (data + count)
 - **Decision**: Use `Promise.all([delegate.findMany(...), delegate.count(...)])` to execute both queries in parallel. Both queries run within the same tenant-scoped transaction context (via AsyncLocalStorage).

@@ -1,10 +1,10 @@
 <!--
   Sync Impact Report
   ==================
-  Version change: 1.0.1 → 1.1.0 (MINOR)
-  Rationale: Add Implementation Status tracking section, correct bcrypt→bcryptjs alignment, add zod to tech stack, add lockout.service.ts documentation
-  Modified sections: Technology Stack (Auth row: bcrypt→bcryptjs, add zod row)
-  Added sections: Implementation Status & Progress
+  Version change: 1.1.0 → 1.2.0 (MINOR)
+  Rationale: Upgrade standardized list endpoint response from `{ data, total }` to `{ data, meta: DataTableMetaDto }` to support advanced pagination metadata natively.
+  Modified sections: Core Principles (V. API-First Modular Architecture)
+  Added sections: None
   Removed sections: None
   Templates requiring updates:
     - .specify/templates/plan-template.md ✅ compatible (Constitution Check section generic)
@@ -109,8 +109,8 @@ modules MUST be autonomous and decoupled.
 - **Generic Repository Pattern**: A `TenantScopedRepository<T>` MUST
   encapsulate pagination, sorting, global search (searchable fields with
   `ilike`/`contains`), and tenant isolation. All list endpoints MUST accept
-  a standardized `DataTableRequestDto` and return `{ data: T[], total:
-  number }`.
+  a standardized `DataTableRequestDto` and return `{ data: T[], meta:
+  DataTableMetaDto }`.
 
 **Rationale**: Multi-repo projects require a single source of truth for
 contracts. Decentralized modules eliminate merge conflicts and enable
@@ -282,4 +282,4 @@ Constitution takes precedence.
 - Anti-patterns (manual tenant filtering, missing audit columns, centralized
   routing) MUST be caught in code review.
 
-**Version**: 1.1.0 | **Ratified**: 2026-07-07 | **Last Amended**: 2026-07-23
+**Version**: 1.2.0 | **Ratified**: 2026-07-07 | **Last Amended**: 2026-07-23
