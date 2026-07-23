@@ -25,10 +25,10 @@ export class TenantGuard implements CanActivate {
       return true;
     }
 
-    const bypassTenant = this.reflector.getAllAndOverride<boolean>('bypassTenant', [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const bypassTenant = this.reflector.getAllAndOverride<boolean>(
+      'bypassTenant',
+      [context.getHandler(), context.getClass()],
+    );
 
     if (bypassTenant) {
       return true;

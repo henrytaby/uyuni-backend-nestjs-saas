@@ -29,7 +29,16 @@ export const TENANT_CONTEXT_SOURCE: InjectionToken<TenantContextSource> =
 export const defaultTenantContextSource: TenantContextSource = (
   req: Request,
 ): RawTenantContext => {
-  let jwtPayload: any = {};
+  interface TokenPayload {
+    sub?: string;
+    user_id?: string;
+    tenant_id?: string | null;
+    tenantId?: string | null;
+    is_platform_admin?: boolean;
+    isPlatformAdmin?: boolean;
+    userId?: string;
+  }
+  let jwtPayload: TokenPayload = {};
 
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -38,16 +47,17 @@ export const defaultTenantContextSource: TenantContextSource = (
       const payloadPart = token.split('.')[1];
       if (payloadPart) {
         const decoded = Buffer.from(payloadPart, 'base64').toString('utf8');
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         jwtPayload = JSON.parse(decoded);
       }
-    } catch (e) {
+    } catch {
       // Ignore parse errors; JwtAuthGuard will securely reject it later.
     }
   }
 
   // Fallback to req.user for tests or if another middleware populated it
-  if (!jwtPayload.sub && (req as any).user) {
-    const u = (req as any).user;
+  if (!jwtPayload.sub && (req as unknown as { user?: TokenPayload }).user) {
+    const u = (req as unknown as { user: TokenPayload }).user;
     jwtPayload = {
       tenant_id: u.tenantId ?? u.tenant_id,
       sub: u.userId ?? u.sub,

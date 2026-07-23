@@ -32,7 +32,10 @@ export class TokenService {
     const refreshToken = crypto.randomBytes(40).toString('hex');
     const tokenHash = this.hashToken(refreshToken);
 
-    const expiresInDays = this.configService.get<number>('REFRESH_TOKEN_EXPIRES_IN_DAYS', 7);
+    const expiresInDays = this.configService.get<number>(
+      'REFRESH_TOKEN_EXPIRES_IN_DAYS',
+      7,
+    );
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + expiresInDays);
 
@@ -73,12 +76,15 @@ export class TokenService {
     if (existingToken.isRevoked) {
       // Token reuse detected! Revoke the entire family
       await this.invalidateFamily(existingToken.id);
-      throw new UnauthorizedException('Token reuse detected. Session invalidated.');
+      throw new UnauthorizedException(
+        'Token reuse detected. Session invalidated.',
+      );
     }
 
     // Determine roles/tenant from user
     const activeMemberships = existingToken.user.memberships.filter(
-      (m: any) => m.isActive && m.tenant.isActive,
+      (m: { isActive: boolean; tenant: { isActive: boolean } }) =>
+        m.isActive && m.tenant.isActive,
     );
     let tenantId: string | undefined;
     let roles: string[] = [];
@@ -111,19 +117,22 @@ export class TokenService {
   private async invalidateFamily(tokenId: string) {
     let currentId: string | null = tokenId;
     while (currentId) {
-      const token: any = await this.prisma.refreshToken.findUnique({
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const token = (await this.prisma.refreshToken.findUnique({
         where: { id: currentId },
         include: { replacements: true },
-      });
+      })) as any;
       if (!token) break;
-
       await this.prisma.refreshToken.update({
         where: { id: currentId },
         data: { isRevoked: true },
       });
 
       // Move to the next token in the chain
-      currentId = token.replacements.length > 0 ? token.replacements[0].id : null;
+      /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+      currentId =
+        token.replacements.length > 0 ? token.replacements[0].id : null;
+      /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
     }
   }
 

@@ -11,7 +11,10 @@ export class PermissionResolverService {
    * Union of all permissions across all active RoleAssignments.
    * ANY scope overrides OWN scope for the same module+action.
    */
-  async resolvePermissions(userId: string, tenantId: string): Promise<Map<string, PermissionScope>> {
+  async resolvePermissions(
+    userId: string,
+    tenantId: string,
+  ): Promise<Map<string, PermissionScope>> {
     const tenantUser = await this.prisma.tenantUser.findUnique({
       where: {
         tenantId_userId: { tenantId, userId },
@@ -43,7 +46,11 @@ export class PermissionResolverService {
         const key = `${permission.module}:${permission.action}`;
         const existingScope = effectivePermissions.get(key);
 
-        if (!existingScope || (existingScope === PermissionScope.OWN && permission.scope === PermissionScope.ANY)) {
+        if (
+          !existingScope ||
+          (existingScope === PermissionScope.OWN &&
+            permission.scope === PermissionScope.ANY)
+        ) {
           effectivePermissions.set(key, permission.scope);
         }
       }

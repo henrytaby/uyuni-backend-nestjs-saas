@@ -17,11 +17,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET', 'fallback-secret-for-dev-only'),
+      secretOrKey: configService.get<string>(
+        'JWT_SECRET',
+        'fallback-secret-for-dev-only',
+      ),
     });
   }
 
-  async validate(payload: JwtPayload) {
+  validate(payload: JwtPayload) {
     if (!payload.sub) {
       throw new UnauthorizedException('Invalid token payload');
     }

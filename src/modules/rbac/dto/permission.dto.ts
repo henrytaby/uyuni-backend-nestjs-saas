@@ -3,7 +3,10 @@ import { IsEnum, IsString, IsNotEmpty } from 'class-validator';
 import { PermissionAction, PermissionScope } from '@prisma/client';
 
 export class PermissionDto {
-  @ApiProperty({ description: 'The module this permission applies to', example: 'crm' })
+  @ApiProperty({
+    description: 'The module this permission applies to',
+    example: 'crm',
+  })
   @IsString()
   @IsNotEmpty()
   module!: string;
@@ -12,7 +15,11 @@ export class PermissionDto {
   @IsEnum(PermissionAction)
   action!: PermissionAction;
 
-  @ApiProperty({ enum: PermissionScope, description: 'The scope of the permission', default: PermissionScope.OWN })
+  @ApiProperty({
+    enum: PermissionScope,
+    description: 'The scope of the permission',
+    default: PermissionScope.OWN,
+  })
   @IsEnum(PermissionScope)
   scope!: PermissionScope;
 }

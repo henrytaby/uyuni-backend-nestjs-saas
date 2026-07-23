@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service.js';
 import { TokenService } from './token.service.js';
 import { LockoutService } from './lockout.service.js';
@@ -34,13 +38,18 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!isPasswordValid) {
-      await this.lockoutService.incrementFailedAttempts(user.id, user.failedLoginAttempts);
+      await this.lockoutService.incrementFailedAttempts(
+        user.id,
+        user.failedLoginAttempts,
+      );
       throw new UnauthorizedException('Invalid credentials');
     }
 
     await this.lockoutService.resetFailedAttempts(user.id);
 
-    const activeMemberships = user.memberships.filter((m) => m.isActive && m.tenant.isActive);
+    const activeMemberships = user.memberships.filter(
+      (m) => m.isActive && m.tenant.isActive,
+    );
     let initialTenantId: string | undefined;
     let initialRoles: string[] = [];
 
@@ -90,7 +99,11 @@ export class AuthService {
     return this.tokenService.rotateToken(refreshToken);
   }
 
-  async switchTenantContext(userId: string, email: string, targetTenantId: string) {
+  async switchTenantContext(
+    userId: string,
+    email: string,
+    targetTenantId: string,
+  ) {
     const membership = await this.prisma.tenantUser.findUnique({
       where: { tenantId_userId: { tenantId: targetTenantId, userId } },
       include: { tenant: true, user: true },

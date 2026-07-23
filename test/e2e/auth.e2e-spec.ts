@@ -2,7 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module.js';
-import { setupTestDb, teardownTestDb, cleanTestDb, TestDb } from './test-container.helper.js';
+import {
+  setupTestDb,
+  teardownTestDb,
+  cleanTestDb,
+  TestDb,
+} from './test-container.helper.js';
 import cookieParser from 'cookie-parser';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
@@ -113,7 +118,7 @@ describe('AuthModule (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post('/auth/login')
         .send({ email: testEmail, password: 'wrongpassword' });
-      
+
       if (i < 4) {
         expect(res.status).toBe(401);
       } else {

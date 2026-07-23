@@ -13,6 +13,7 @@ build/
 # Logs
 *.log
 logs/
+lint-output.txt
 
 # IDE
 .vscode/

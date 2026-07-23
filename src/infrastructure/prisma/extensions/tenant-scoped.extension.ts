@@ -88,7 +88,12 @@ export function tenantScopedExtension(
                     `use \`findFirst({ where: { id } })\` instead.`,
                 );
               }
-              modifiedArgs = injectReadFilter(modifiedArgs, tenantId, userId, scopeFilter);
+              modifiedArgs = injectReadFilter(
+                modifiedArgs,
+                tenantId,
+                userId,
+                scopeFilter,
+              );
             }
 
             // Re-entry guard: already inside the tenant transaction that

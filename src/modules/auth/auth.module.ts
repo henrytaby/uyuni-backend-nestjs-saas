@@ -15,7 +15,10 @@ import { AuthController } from './controllers/auth.controller.js';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET', 'fallback-secret-for-dev-only'),
+        secret: configService.get<string>(
+          'JWT_SECRET',
+          'fallback-secret-for-dev-only',
+        ),
         signOptions: { expiresIn: '15m' },
       }),
       inject: [ConfigService],

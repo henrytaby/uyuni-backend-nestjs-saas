@@ -11,6 +11,7 @@ import {
   RequiredPermission,
 } from '../decorators/require-permissions.decorator.js';
 import { PermissionResolverService } from '../../modules/rbac/services/permission-resolver.service.js';
+import type { AuthenticatedRequest } from '../interfaces/authenticated-request.interface.js';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -22,18 +23,17 @@ export class PermissionsGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredPermissions = this.reflector.getAllAndOverride<RequiredPermission[]>(
-      REQUIRE_PERMISSIONS_KEY,
-      [context.getHandler(), context.getClass()],
-    );
+    const requiredPermissions = this.reflector.getAllAndOverride<
+      RequiredPermission[]
+    >(REQUIRE_PERMISSIONS_KEY, [context.getHandler(), context.getClass()]);
 
     if (!requiredPermissions || requiredPermissions.length === 0) {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const user = request.user;
-    const tenantId = request.tenantId;
+    const tenantId = request.user?.tenantId;
 
     if (!user) {
       throw new ForbiddenException('User not authenticated');
@@ -46,17 +46,21 @@ export class PermissionsGuard implements CanActivate {
     if (user.isPlatformAdmin) {
       const isDelete = requiredPermissions.some((p) => p.action === 'DELETE');
       if (isDelete) {
-         this.logger.warn(`Superadmin ${user.id} attempted DELETE in tenant ${tenantId}. Blocked for compliance.`);
-         throw new ForbiddenException('Superadmins cannot perform DELETE operations on tenant data');
+        this.logger.warn(
+          `Superadmin ${user.userId} attempted DELETE in tenant ${tenantId}. Blocked for compliance.`,
+        );
+        throw new ForbiddenException(
+          'Superadmins cannot perform DELETE operations on tenant data',
+        );
       }
-      this.logger.log(`Superadmin ${user.id} bypassed permissions for tenant ${tenantId}`);
+      this.logger.log(
+        `Superadmin ${user.userId} bypassed permissions for tenant ${tenantId}`,
+      );
       return true;
     }
 
-    const effectivePermissions = await this.permissionResolver.resolvePermissions(
-      user.id,
-      tenantId,
-    );
+    const effectivePermissions =
+      await this.permissionResolver.resolvePermissions(user.userId, tenantId);
 
     const hasPermission = requiredPermissions.every((reqPerm) => {
       const key = `${reqPerm.module}:${reqPerm.action}`;

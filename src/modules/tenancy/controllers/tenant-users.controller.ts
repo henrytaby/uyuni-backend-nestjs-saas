@@ -10,7 +10,12 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { TenantUsersService } from '../services/tenant-users.service.js';
 import { RequirePermissions } from '../../../common/decorators/require-permissions.decorator.js';
 import { PermissionAction } from '@prisma/client';
