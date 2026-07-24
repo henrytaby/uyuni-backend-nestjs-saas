@@ -1,9 +1,18 @@
 <!--
   Sync Impact Report
   ==================
-  Version change: 1.1.0 → 1.2.0 (MINOR)
-  Rationale: Upgrade standardized list endpoint response from `{ data, total }` to `{ data, meta: DataTableMetaDto }` to support advanced pagination metadata natively.
-  Modified sections: Core Principles (V. API-First Modular Architecture)
+  Version change: 1.2.0 → 1.3.0 (MINOR)
+  Rationale: Strengthen Principle I with runtime membership verification and
+  bounded revocation windows; add idempotency guidance for mutating endpoints.
+  Reason: Architectural isolation alone does not guarantee operational
+  isolation — a JWT signed while a user held a membership remains valid after
+  the membership is revoked, allowing ex-employees to access tenant data until
+  token expiry. Industry-standard B2B SaaS closes this gap via a membership
+  existence check (cacheable) on TenantGuard plus a bounded revocation window.
+  Modified sections:
+    - Core Principles (I. Strict Multi-Tenant Isolation) — added membership
+      verification + revocation-window mandates.
+    - Security (DevSecOps) — added idempotency-key guidance.
   Added sections: None
   Removed sections: None
   Templates requiring updates:
@@ -11,7 +20,9 @@
     - .specify/templates/spec-template.md ✅ compatible (no constitution-specific refs)
     - .specify/templates/tasks-template.md ✅ compatible (no constitution-specific refs)
     - .specify/templates/commands/*.md ⚠ not found (no command templates exist)
-  Follow-up TODOs: None
+  Follow-up TODOs:
+    - /specs/002-multi-tenancy-core must adopt these mandates in its next
+      implementation pass (tasks T076-T079).
 -->
 
 # Uyuni SaaS Constitution
@@ -31,9 +42,37 @@ tenant isolation at the infrastructure layer, not by convention.
 - Every domain endpoint MUST be protected by `TenantGuard`.
 - Cross-tenant data access is mathematically impossible by design; automated
   anti-leakage tests MUST prove this invariant.
+- **Membership Verification (Live Isolation)**: `TenantGuard` MUST verify that
+  the authenticated user holds an **active `TenantUser` membership** in the
+  asserted `tenant_id` (existence + `is_active` check). A JWT signed while the
+  user held a membership is NOT sufficient after that membership is revoked or
+  deactivated. The check MUST be cacheable (Redis or equivalent) to avoid a DB
+  hit on every request; the cache MUST invalidate on membership change
+  (`TenantUser.isActive` flip, role change, or tenant soft-delete). Platform
+  superadmins bypass this check (they have no membership) but their access is
+  audit-logged per Principle II.
+- **Context Provenance**: The request-scoped `TenantContext` MUST be populated
+  exclusively from a **cryptographically verified** source (`req.user` after
+  Passport signature validation). Raw JWT base64 decoding, HTTP headers
+  (`x-tenant-id`), query parameters, or request body fields are forbidden
+  (CWE-290). This closes the spoofing window on `@Public()`/`@BypassTenant()`
+  routes.
+- **Fail-Closed Extensions**: The Prisma tenant-scoped extension MUST throw
+  `UnauthorizedException` on reads AND writes when `tenantId` is missing and
+  the caller is not a platform superadmin. It MUST NEVER fail-open to returning
+  all tenants nor accept `tenant_id` from the request body.
+- **Bounded Revocation Window**: Membership revocation MUST take effect within
+  a bounded window. This is satisfied by EITHER (a) short-lived access tokens
+  with mandatory refresh-token rotation revalidating membership on each
+  refresh, OR (b) a membership denylist checked in `TenantGuard`. The maximum
+  window equals the access-token TTL; long-lived tokens without revalidation
+  are prohibited for tenant-scoped requests.
 
 **Rationale**: In B2B SaaS, a single tenant data leak is a critical breach.
-Architectural enforcement eliminates the human-error vector.
+Architectural enforcement eliminates the human-error vector. Membership
+verification adds operational enforcement — it closes the window during which
+a removed or suspended member retains access via a previously-issued JWT, a
+real-world scenario when an employee is offboarded or a tenant is suspended.
 
 ### II. Granular Role-Based Access Control (RBAC)
 
@@ -204,6 +243,12 @@ prohibited.
 - CORS MUST restrict to the Frontend domain in production; Helmet MUST be
   enabled.
 - Account lockout MUST trigger after 5 failed login attempts.
+- **Idempotency**: Mutating endpoints that create durable resources (tenants,
+  memberships, payments, invoices) SHOULD accept an `Idempotency-Key` request
+  header and return the original result on retry with the same key. This
+  guarantees safe retry of network-failed requests without side-effect
+  duplication — a baseline expectation for B2B SaaS APIs (cf. Stripe,
+  Intercom). Read endpoints and soft-delete idempotency are optional.
 
 ### Testing & CI/CD
 
@@ -282,4 +327,4 @@ Constitution takes precedence.
 - Anti-patterns (manual tenant filtering, missing audit columns, centralized
   routing) MUST be caught in code review.
 
-**Version**: 1.2.0 | **Ratified**: 2026-07-07 | **Last Amended**: 2026-07-23
+**Version**: 1.3.0 | **Ratified**: 2026-07-07 | **Last Amended**: 2026-07-23

@@ -30,23 +30,17 @@ guarantees the context is available for all guards, pipes, interceptors,
 and controllers downstream. This is the same pattern used by APM tools
 (Datadog, New Relic) and distributed tracing frameworks in NestJS.
 
-**Anti-spoofing safeguard**: The middleware MUST derive `tenantId` and
-`userId` exclusively from the **decoded JWT payload** — never from HTTP
-headers (e.g., `x-tenant-id`), query parameters, or request body fields.
-Accepting tenant identity from client-controlled input would allow any
-authenticated user to impersonate another tenant (CWE-290: Authentication
-Bypass by Spoofing). During development/testing before spec 003 ships,
-test fixtures inject context programmatically via the NestJS testing
-module (not via HTTP headers).
+**Anti-spoofing safeguard**: The context MUST be populated exclusively from a verified source. Specifically, the middleware (or interceptor/guard) MUST read from `req.user` AFTER the JWT signature has been cryptographically verified by Passport. It MUST NEVER parse the raw JWT (`Buffer.from(base64url)`) manually beforehand, as this allows spoofed claims to populate the context in `@Public()` or `@BypassTenant()` routes (CWE-290). Likewise, it must never read from HTTP headers (e.g., `x-tenant-id`), query parameters, or request body fields. During development/testing before spec 003 ships, test fixtures inject context programmatically via the NestJS testing module.
 
 **Alternatives considered**:
-- *NestJS request-scoped providers (`Scope.REQUEST`)*: Rejected — heavy DI
+
+- _NestJS request-scoped providers (`Scope.REQUEST`)_: Rejected — heavy DI
   rebuild on each request; the constitution explicitly names AsyncLocalStorage.
-- *Pass context through function parameters*: Rejected — the constitution
+- _Pass context through function parameters_: Rejected — the constitution
   forbids "manual parameter passing"; too easy to forget.
-- *cls-hooked / continuation-local-storage*: Deprecated; `AsyncLocalStorage`
+- _cls-hooked / continuation-local-storage_: Deprecated; `AsyncLocalStorage`
   is the stable, built-in replacement in Node 16+.
-- *Global interceptor for context population*: Rejected — interceptors
+- _Global interceptor for context population_: Rejected — interceptors
   execute after guards, so TenantGuard would read an empty store on every
   request. The middleware→guard order is critical.
 
@@ -57,17 +51,18 @@ exposed via `$extends`) to override `create`, `createMany`, `update`,
 `updateMany`, `upsert`, `delete`, `deleteMany`, `findMany`, `findUnique`,
 `findFirst`, and `count` on tenant-scoped models. The extension reads
 `tenantId`/`userId` from `TenantContextService` and:
+
 - calls/writes → injects `tenant_id` into the data AND `created_by_id`/
   `updated_by_id`/`deleted_by_id` (this tenancy spec populates them via
   context reads as a bridge; the full audit-extension in spec 005 reuses
-  the same mechanism).
-- reads → adds `WHERE tenant_id = <ctx.tenantId>` (unless
-  `ctx.isPlatformAdmin`).
+  the same mechanism). **Crucially (Fail-Closed):** If `tenantId` is missing from the context and the caller is not a platform admin, writes on tenant-scoped models MUST throw an `UnauthorizedException`. It must never fallback to accepting `tenant_id` from the body.
+- reads → adds `WHERE tenant_id = <ctx.tenantId>`. **Crucially (Fail-Closed):** If `tenantId` is missing and the caller is not a platform admin, reads MUST throw an `UnauthorizedException`, never fail-open to returning all tenants.
+- **findUnique semantics**: The extension intercepts `findUnique` and transforms it internally to `findFirst` injecting the `tenantId` filter. This prevents throwing 500 errors and maintains a clean Prisma developer experience while enforcing isolation.
 - For **all operations** on tenant-scoped models, the extension wraps the
   query inside a Prisma interactive transaction (`$transaction`) that first
   executes `SET LOCAL app.tenant_id = '<ctx.tenantId>'` and, when
   `ctx.isPlatformAdmin` is true, also `SET LOCAL app.is_platform_admin =
-  'true'`. This guarantees that the `SET LOCAL` and the query share the
+'true'`. This guarantees that the `SET LOCAL` and the query share the
   same physical database connection, which is required for PostgreSQL RLS
   to function correctly under connection pooling (see Task 3).
 - If the caller is already inside a `$transaction`, the extension detects
@@ -83,14 +78,15 @@ branch in the extension that also sets the RLS bypass variable
 This is the constitutional guarantee that no manual tenant filtering is needed.
 
 **Alternatives considered**:
-- *Prisma middleware (`$use`)*: Removed in Prisma 5+ (and not reintroduced in
+
+- _Prisma middleware (`$use`)_: Removed in Prisma 5+ (and not reintroduced in
   7.x); extensions are the supported replacement.
-- *Manual repository methods per service*: Rejected — creates N points of
+- _Manual repository methods per service_: Rejected — creates N points of
   failure where a developer forgets the filter; violates "by design, not
   by convention."
-- *PostgreSQL RLS as the only mechanism*: RLS protects data but doesn't
+- _PostgreSQL RLS as the only mechanism_: RLS protects data but doesn't
   populate new records with `tenant_id`; an extension is still needed for
-  writes. RLS is the *secondary* layer (see next task).
+  writes. RLS is the _secondary_ layer (see next task).
 
 ### 3. PostgreSQL Row-Level Security (RLS) as Secondary Defense
 
@@ -100,6 +96,7 @@ with raw SQL `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`. Session variables
 `$executeRaw` `SET LOCAL` inside an **interactive transaction** so RLS
 policies read `current_setting('app.tenant_id')` and
 `current_setting('app.is_platform_admin')`. The policy enforces:
+
 - `USING (current_setting('app.is_platform_admin', true) = 'true' OR tenant_id = current_setting('app.tenant_id', true)::uuid)` on SELECT.
 - `WITH CHECK (current_setting('app.is_platform_admin', true) = 'true' OR tenant_id = current_setting('app.tenant_id', true)::uuid)` on INSERT/UPDATE.
 
@@ -113,6 +110,7 @@ or return unfiltered rows. The ONLY way to guarantee both statements share
 the same physical connection is to wrap them inside a Prisma interactive
 transaction (`$transaction(async (tx) => { ... })`). The Prisma extension
 must therefore:
+
 1. Detect whether the caller is already inside a `$transaction` (in which
    case it only issues the `SET LOCAL` on the existing transaction client).
 2. If not inside a transaction, wrap the operation in
@@ -133,17 +131,19 @@ RLS for cross-tenant support queries; the extension sets this variable
 when `TenantContext.isPlatformAdmin` is true.
 
 **Alternatives considered**:
-- *RLS only on SELECT (no WITH CHECK)*: Rejected — allows inserting rows
+
+- _RLS only on SELECT (no WITH CHECK)_: Rejected — allows inserting rows
   with the wrong tenant_id at the DB level if the app bypasses the
   extension. WITH CHECK makes the DB refuse wrong-tenant writes too.
-- *Session-level `SET` (not `SET LOCAL`)*: Rejected — leaks across
+- _Session-level `SET` (not `SET LOCAL`)_: Rejected — leaks across
   connections from a pool; `SET LOCAL` is transaction-scoped and safe.
-- *No RLS, app-only*: Rejected — violates the constitution; defense in
+- _No RLS, app-only_: Rejected — violates the constitution; defense in
   depth is the whole point.
-- *Sequential `$executeRaw` + query without `$transaction`*: Rejected —
+- _Sequential `$executeRaw` + query without `$transaction`_: Rejected —
   Prisma's connection pool may route the two statements to different
   connections, silently breaking RLS. The interactive transaction is the
   only mechanism that guarantees same-connection execution.
+- **Manual Transactions (`runInTenantTx`)**: Since `prisma.$transaction(...)` bypasses the extension's `SET LOCAL` to avoid nested transaction conflicts, manual transactions on tenant-scoped models MUST be wrapped in a dedicated helper (e.g., `runInTenantTx(prisma, ctx, cb)`) that explicitly emits the `SET LOCAL` inside the transaction boundary. The extension alone cannot guarantee RLS for manual outer transactions if the caller forgets it.
 
 **Performance note**: Wrapping every tenant-scoped read in `$transaction`
 adds ~3 additional round-trips per query (BEGIN + SET LOCAL + COMMIT).
@@ -156,7 +156,8 @@ to writes only (where RLS WITH CHECK enforces the secondary defense).
 This would require a constitution amendment (Principle I mandates RLS as
 "a secondary defense layer" for ALL operations) and is NOT in scope for
 this spec. The current design prioritizes security (dual-layer for reads
-+ writes) over marginal performance gains.
+
+- writes) over marginal performance gains.
 
 ### 4. TenantGuard: Where to Enforce and What to Reject
 
@@ -179,12 +180,13 @@ controller is protected without an explicit decorator. This is the
 the constitution).
 
 **Alternatives considered**:
-- *Per-controller `@UseGuards(TenantGuard)`*: Rejected — easy to forget on a
+
+- _Per-controller `@UseGuards(TenantGuard)`_: Rejected — easy to forget on a
   new controller; breaks "by default protected."
-- *Middleware to populate tenant context, guard to check*: The middleware
+- _Middleware to populate tenant context, guard to check_: The middleware
   populates context (runs first); the guard enforces presence (runs second).
   Splitting is idiomatic NestJS and respects the execution lifecycle.
-- *Reject with 403 instead of 401*: 403 implies authenticated-but-forbidden;
+- _Reject with 403 instead of 401_: 403 implies authenticated-but-forbidden;
   401 (or a custom "tenant required" status) is more accurate — there is no
   tenant membership to authorize against.
 
@@ -203,8 +205,9 @@ auto-filtering extension produces this naturally — the controller never
 sees the row, so it can't conditionally 403.
 
 **Alternatives considered**:
-- *Check existence first, then 403*: Rejected — leaks existence.
-- *Global 403 for wrong-tenant IDs*: Requires querying before the filter,
+
+- _Check existence first, then 403_: Rejected — leaks existence.
+- _Global 403 for wrong-tenant IDs_: Requires querying before the filter,
   defeating the purpose.
 
 ### 6. Plan, Tenant, User, TenantUser Schema Design
@@ -226,10 +229,11 @@ gates"; a normalized join table is over-engineering for a small fixed
 module list.
 
 **Alternatives considered**:
-- *role as a normalized Role table here*: Rejected — RBAC is a whole
+
+- _role as a normalized Role table here_: Rejected — RBAC is a whole
   feature (spec 004); seeding a string role column here avoids premature
   normalization and is migrated cleanly later.
-- *module_access as a join table*: Rejected — over-normalized for ~7
+- _module_access as a join table_: Rejected — over-normalized for ~7
   module names; JSON array is queryable in PostgreSQL.
 
 ### 7. Anti-Leakage Test Strategy
@@ -237,12 +241,13 @@ module list.
 **Decision**: An e2e suite `tenancy-anti-leakage.e2e-spec.ts` using
 Testcontainers (real PostgreSQL). It seeds Tenant A + Tenant B with sample
 tenant-scoped records, authenticates as Tenant A's user, and asserts:
+
 - list endpoints return only Tenant A rows;
 - direct access to Tenant B's record by ID returns 404;
 - a request with a manually-set `tenant_id` body field is ignored (the
   extension overrides it).
-The suite runs in CI as a non-negotiable gate (constitution: "anti-leakage
-CI gate is non-negotiable").
+  The suite runs in CI as a non-negotiable gate (constitution: "anti-leakage
+  CI gate is non-negotiable").
 
 **Rationale**: Constitution Principles I + Testing section require these
 tests to prove isolation "mathematically." Real-DB tests (not mocked
@@ -251,6 +256,7 @@ Making it a CI gate means a regression that breaks isolation fails the
 build, never reaching production.
 
 **Alternatives considered**:
-- *Unit tests with mocked Prisma*: Rejected — mocks the very layer
+
+- _Unit tests with mocked Prisma_: Rejected — mocks the very layer
   (Prisma extension + RLS) under test.
-- *Manual checklist*: Rejected — not provable or repeatable.
+- _Manual checklist_: Rejected — not provable or repeatable.

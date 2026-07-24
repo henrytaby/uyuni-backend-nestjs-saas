@@ -21,6 +21,7 @@ creation by a tenant admin.
 target tenant) OR platform admin.
 
 **Request Body**:
+
 ```json
 {
   "tenantId": "uuid",
@@ -29,13 +30,14 @@ target tenant) OR platform admin.
 }
 ```
 
-| Field | Type | Required | Validation |
-|-------|------|----------|------------|
-| tenantId | UUID | yes | Must match caller's tenant (platform admin may specify any; tenant admin gets 403 if mismatch) |
-| userId | UUID | yes | Must reference an existing active User |
-| role | string | yes | "ADMIN", "EMPLEADO", or "AUDITOR" |
+| Field    | Type   | Required | Validation                                                                                     |
+| -------- | ------ | -------- | ---------------------------------------------------------------------------------------------- |
+| tenantId | UUID   | yes      | Must match caller's tenant (platform admin may specify any; tenant admin gets 403 if mismatch) |
+| userId   | UUID   | yes      | Must reference an existing active User                                                         |
+| role     | string | yes      | "ADMIN", "EMPLEADO", or "AUDITOR"                                                              |
 
 **Response** (201 Created):
+
 ```json
 {
   "id": "uuid",
@@ -49,8 +51,10 @@ target tenant) OR platform admin.
 ```
 
 **Errors**:
+
 - 400: Invalid role
-- 403: Not a tenant admin (missing ADMIN role) or tenantId does not match caller's tenant context
+- 401: Unauthorized (if tenant context is missing, the Prisma extension enforces fail-closed).
+- 403: Not a tenant admin (missing ADMIN role). _Note: For normal users, the Prisma extension overrides `tenantId` from context. However, per Phase 8 security mandates, if the context is entirely missing and the caller is not a platform admin, the extension throws a `401 Unauthorized` rather than silently bypassing._
 - 409: Membership already exists (the (tenant_id, user_id) pair is unique)
 
 ---
@@ -64,16 +68,18 @@ user lists only their own memberships (scope_all=false).
 see their own.
 
 **Query Parameters** (DataTableRequestDto):
-| Param | Type | Default | Description |
-|-------|------|---------|-------------|
-| page | number | 1 | |
-| pageSize | number | 25 | max 100 |
-| searchTerm | string | null | Search across user email, first/last name |
-| tenantId | UUID | caller's | Filter by tenant (defaults to caller's active tenant) |
-| role | string | null | Filter by role |
-| isActive | boolean | true | |
+
+| Param      | Type    | Default  | Description                                           |
+| ---------- | ------- | -------- | ----------------------------------------------------- |
+| page       | number  | 1        |                                                       |
+| pageSize   | number  | 25       | max 100                                               |
+| searchTerm | string  | null     | Search across user email, first/last name             |
+| tenantId   | UUID    | caller's | Filter by tenant (defaults to caller's active tenant) |
+| role       | string  | null     | Filter by role                                        |
+| isActive   | boolean | true     |                                                       |
 
 **Response** (200 OK):
+
 ```json
 {
   "data": [
@@ -104,6 +110,7 @@ Get a single membership.
 **Response** (200 OK): Membership object (same shape as above).
 
 **Errors**:
+
 - 404: Membership not found or in another tenant (for non-admin callers)
 
 ---
@@ -112,9 +119,10 @@ Get a single membership.
 
 Update a membership's role (e.g., promote EMPLEADO to ADMIN).
 
-**RBAC**: Tenant admin of the membership's tenant OR platform admin.
+**RBAC**: Tenant admin of the membership's tenant OR platform admin. _(Note: This is an interim textual requirement for staging; the formal module/action permissions matrix is strictly defined and enforced in spec 004)._
 
 **Request Body** (partial):
+
 ```json
 { "role": "ADMIN" }
 ```
@@ -131,6 +139,7 @@ tenant but their User record persists globally.
 **RBAC**: Tenant admin of the membership's tenant OR platform admin.
 
 **Response** (200 OK):
+
 ```json
 { "id": "uuid", "isActive": false }
 ```
@@ -141,6 +150,7 @@ tenant but their User record persists globally.
 
 These endpoints demonstrate the TenantGuard + RLS isolation expected by
 the constitution. An e2e suite verifies:
+
 - Tenant A's admin cannot list or access Tenant B's memberships.
 - A membership's tenant_id cannot be forged via the request body — the
   Prisma extension overrides it with the caller's context tenant_id.

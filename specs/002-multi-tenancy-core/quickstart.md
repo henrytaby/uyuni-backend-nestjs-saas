@@ -17,23 +17,25 @@
    tables + RLS policies on TenantUser). Prisma does not support RLS natively
    in `schema.prisma`, so the migration must be created and edited before
    applying:
-    ```bash
-    # Step 1: Generate the migration SQL without applying it
-    npx prisma migrate dev --create-only --name tenant_core
 
-    # Step 2: Open the generated .sql file in prisma/migrations/<ts>_tenant_core/migration.sql
-    # and append the RLS policies at the end:
-    #
-    #   ALTER TABLE "TenantUser" ENABLE ROW LEVEL SECURITY;
-    #   CREATE POLICY tenant_isolation_policy ON "TenantUser"
-    #     USING (current_setting('app.is_platform_admin', true) = 'true'
-    #            OR tenant_id = current_setting('app.tenant_id', true)::uuid)
-    #     WITH CHECK (current_setting('app.is_platform_admin', true) = 'true'
-    #            OR tenant_id = current_setting('app.tenant_id', true)::uuid);
-    #
-    # Step 3: Apply the edited migration
-    npx prisma migrate dev
-    ```
+   ```bash
+   # Step 1: Generate the migration SQL without applying it
+   npx prisma migrate dev --create-only --name tenant_core
+
+   # Step 2: Open the generated .sql file in prisma/migrations/<ts>_tenant_core/migration.sql
+   # and append the RLS policies at the end:
+   #
+   #   ALTER TABLE "TenantUser" ENABLE ROW LEVEL SECURITY;
+   #   ALTER TABLE "TenantUser" FORCE ROW LEVEL SECURITY;
+   #   CREATE POLICY tenant_isolation_policy ON "TenantUser"
+   #     USING (current_setting('app.is_platform_admin', true) = 'true'
+   #            OR tenant_id = current_setting('app.tenant_id', true)::uuid)
+   #     WITH CHECK (current_setting('app.is_platform_admin', true) = 'true'
+   #            OR tenant_id = current_setting('app.tenant_id', true)::uuid);
+   #
+   # Step 3: Apply the edited migration
+   npx prisma migrate dev
+   ```
 
 2. **Seed a Free plan and a platform admin** (one-time, via a seed script
    or the API):
@@ -51,6 +53,7 @@ Validate cross-tenant access is impossible by design. This is the
 constitution's non-negotiable CI gate.
 
 1. **Provision two tenants** as platform admin:
+
    ```bash
    curl -X POST http://localhost:3000/tenancy/tenants \
      -H "Authorization: Bearer $PLATFORM_ADMIN_TOKEN" \
@@ -70,51 +73,64 @@ constitution's non-negotiable CI gate.
    `user_id = User A`.
 
 4. **List TenantUser memberships** as Tenant A user:
+
    ```bash
    curl http://localhost:3000/tenancy/tenant-users \
      -H "Authorization: Bearer $TENANT_A_TOKEN"
    ```
+
    **Expected**: Only Tenant A's memberships returned. Tenant B is
    invisible.
 
 5. **Attempt direct access to a Tenant B membership by ID**:
+
    ```bash
    curl http://localhost:3000/tenancy/tenant-users/$TENANT_B_MEMBERSHIP_ID \
      -H "Authorization: Bearer $TENANT_A_TOKEN"
    ```
+
    **Expected**: `404 Not Found` (not 403 — no information leakage).
 
 6. **Attempt to forge tenant_id in the request body** (create a membership
    with a `tenantId` set to Tenant B while authenticated as Tenant A):
+
    ```bash
    curl -X POST http://localhost:3000/tenancy/tenant-users \
      -H "Authorization: Bearer $TENANT_A_TOKEN" \
      -d '{ "tenantId": "'"$TENANT_B_ID"'", "userId": "...", "role": "EMPLEADO" }'
    ```
-   **Expected**: The Prisma extension overrides `tenantId` with the
-   caller's context (Tenant A). The created membership belongs to Tenant A,
-   not Tenant B. Verify via the response `tenantId` field.
+
+   **Expected**: `400 Bad Request` or the extension forcefully overrides `tenantId` with the caller's context (Tenant A). _(Note: Following Phase 8 security mandates, if context is entirely missing, the extension will throw `401 Unauthorized` fail-closed)._ The created membership NEVER belongs to Tenant B.
 
 7. **Automated anti-leakage test**: The e2e spec
    `tenancy-anti-leakage.e2e-spec.ts` automates 4-6 against a real
    PostgreSQL container with RLS enabled. It MUST pass in CI — a failure
    blocks the build.
 
+8. **Verify scopeFilter inercy (R10)**: Attempt to read resources while artificially
+   injecting a context with `scopeFilter === 'OWN'` (if your test utils allow mocking the context).
+   **Expected**: The query returns ALL tenant resources (e.g., all `TenantUser` memberships for the tenant),
+   proving the `createdById = userId` condition in the Prisma extension is safely guarded and inert until RBAC 004.
+
 ### Scenario 2: Tenant & Plan Management (US2)
 
 1. **Create a Plan** (platform admin):
+
    ```bash
    curl -X POST http://localhost:3000/tenancy/plans \
      -H "Authorization: Bearer $PLATFORM_ADMIN_TOKEN" \
      -d '{ "name": "Premium", "tierLevel": 3, "maxUsers": 100, "storageLimit": 107374182400, "moduleAccess": ["auth","tenancy","crm","agenda","sales","inventory"], "price": 99.99 }'
    ```
+
    **Expected**: `201 Created` with the plan object.
 
 2. **Create a Tenant under the Premium plan** (platform admin):
+
    ```bash
    curl -X POST http://localhost:3000/tenancy/tenants \
      -d '{ "name": "Globex Corp", "slug": "globex", "planId": "$PREMIUM_PLAN" }'
    ```
+
    **Expected**: `201 Created`, `paymentState: "ACTIVO"`.
 
 3. **Try to delete a Plan in use**:
@@ -140,12 +156,14 @@ the Prisma extension auto-injects them.
 
 3. **Create a membership** as a platform admin specifying the acting user
    via context:
+
    ```bash
    # The created_by_id column is auto-populated by the Prisma extension
    # reading the context — NOT passed in the body.
    curl -X POST http://localhost:3000/tenancy/tenant-users \
      -d '{ "tenantId": "...", "userId": "...", "role": "ADMIN" }'
    ```
+
    **Expected**: The created membership's `created_by_id` equals the
    platform admin's `user_id` — verify in the DB. No `created_by_id`
    field was sent in the request body.

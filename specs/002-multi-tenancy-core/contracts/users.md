@@ -2,7 +2,7 @@
 
 **Module**: Tenancy
 **Base Path**: `/tenancy/users`
-**Auth**: Platform admin for global CRUD; TenantGuard for membership-scoped reads. Exception: `GET /me/tenants` is `@Public()` (no TenantGuard) — the user needs to list their tenants *before* selecting an active tenant context.
+**Auth**: Platform admin for global CRUD; TenantGuard for membership-scoped reads. Exception: `GET /me/tenants` uses `@BypassTenant()` (skips TenantGuard only); JWT authentication still required.
 **Plan Gate**: N/A
 
 Users are global identities (unique email platform-wide). This contract
@@ -18,6 +18,7 @@ Create a global user record.
 **RBAC**: Platform admin (or created during tenant provisioning in spec 008)
 
 **Request Body**:
+
 ```json
 {
   "email": "jane@example.com",
@@ -28,15 +29,16 @@ Create a global user record.
 }
 ```
 
-| Field | Type | Required | Validation |
-|-------|------|----------|------------|
-| email | string | yes | valid email, unique |
-| password | string | yes | min 8 chars (plain-text input; bcrypt-hashed to 60 chars on storage) |
-| firstName | string | no | 1-50 chars |
-| lastName | string | no | 1-50 chars |
-| isPlatformAdmin | boolean | no | default false |
+| Field           | Type    | Required | Validation                                                                                     |
+| --------------- | ------- | -------- | ---------------------------------------------------------------------------------------------- |
+| email           | string  | yes      | valid email (`@IsEmail()`), unique                                                             |
+| password        | string  | yes      | min 8 chars (plain-text input; bcrypt-hashed to 60 chars on storage using env `BCRYPT_ROUNDS`) |
+| firstName       | string  | no       | 1-50 chars                                                                                     |
+| lastName        | string  | no       | 1-50 chars                                                                                     |
+| isPlatformAdmin | boolean | no       | default false                                                                                  |
 
 **Response** (201 Created) — note: password hash NEVER returned:
+
 ```json
 {
   "id": "uuid",
@@ -50,6 +52,7 @@ Create a global user record.
 ```
 
 **Errors**:
+
 - 400: Validation error, weak password
 - 409: Email already registered
 
@@ -66,10 +69,17 @@ tenant's members use the TenantUsers contract instead.
 isActive.
 
 **Response** (200 OK):
+
 ```json
 {
   "data": [
-    { "id": "uuid", "email": "jane@example.com", "firstName": "Jane", "lastName": "Doe", "isActive": true }
+    {
+      "id": "uuid",
+      "email": "jane@example.com",
+      "firstName": "Jane",
+      "lastName": "Doe",
+      "isActive": true
+    }
   ],
   "total": 1
 }
@@ -81,11 +91,12 @@ isActive.
 
 Get a user.
 
-**RBAC**: Platform admin OR the user themselves (own record).
+**RBAC**: Platform admin OR the user themselves (own record). Enforced in `UsersService.get()` via `ctxUserId === id || isPlatformAdmin` (mirroring `TenantsService.get()`).
 
 **Response** (200 OK): User object (no password hash).
 
 **Errors**:
+
 - 404: User not found (or not authorized to view)
 
 ---
@@ -104,11 +115,12 @@ verification (out of scope here; deferred).
 ## DELETE /tenancy/users/:id
 
 Soft-delete (is_active=false). Does not remove TenantUser memberships —
-those are deactivated separately (spec 008).
+those are deactivated separately (spec 008). _(Note: This leaves memberships temporarily "orphaned/active" for inactive users. This is an accepted window until spec 008 cascading or `TenantGuard` flag checks are implemented)._
 
 **RBAC**: Platform admin
 
 **Response** (200 OK):
+
 ```json
 { "id": "uuid", "isActive": false }
 ```
@@ -120,15 +132,20 @@ those are deactivated separately (spec 008).
 List the tenants the authenticated user belongs to (used for tenant
 context switching after login — full flow in spec 003, but the read is here).
 
-**RBAC**: Authenticated user (any). **TenantGuard**: SKIPPED via `@Public()`
-— this endpoint runs before a tenant context is established (the user needs
-to see their tenant list to choose one). Only JWT authentication is required.
+**RBAC**: Authenticated user (any). **TenantGuard**: SKIPPED via `@BypassTenant()` (class-level); `JwtAuthGuard`: enforced (JWT required). The user needs to list their tenants before selecting an active context.
 
 **Response** (200 OK):
+
 ```json
 {
   "data": [
-    { "tenantId": "uuid", "tenantName": "Acme Clinic", "slug": "acme-clinic", "role": "ADMIN", "isActive": true }
+    {
+      "tenantId": "uuid",
+      "tenantName": "Acme Clinic",
+      "slug": "acme-clinic",
+      "role": "ADMIN",
+      "isActive": true
+    }
   ],
   "total": 1
 }
