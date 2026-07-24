@@ -51,21 +51,23 @@ required variables throw a `ZodError` on bootstrap, failing fast. The
 schema is the single source of truth: `z.infer<typeof schema>` produces
 the `Config` TypeScript type (no duplicated interface).
 
-| Variable | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
-| DATABASE_URL | string | yes | — | PostgreSQL connection string |
-| PORT | number | no | 3000 | HTTP listen port |
-| NODE_ENV | string | no | "development" | Environment (development/staging/production) |
-| CORS_ORIGINS | string | yes | — | Comma-separated allowed origins |
-| JWT_SECRET | string | yes | — | Placeholder for auth feature (spec 003) |
-| JWT_EXPIRES_IN | string | no | "15m" | Access token TTL (placeholder) |
-| JWT_REFRESH_EXPIRES_IN | string | no | "7d" | Refresh token TTL (placeholder) |
-| RATE_LIMIT_TTL | number | no | 60 | Rate limit window in seconds |
-| RATE_LIMIT_LIMIT | number | no | 100 | Max requests per window per IP |
-| TRUST_PROXY | boolean | no | false | Trust X-Forwarded-* headers (prod behind Nginx) |
-| LOG_LEVEL | string | no | "info" | Pino log level (fatal/error/warn/info/debug/trace) |
+| Variable               | Type    | Required | Default       | Description                                           |
+| ---------------------- | ------- | -------- | ------------- | ----------------------------------------------------- |
+| DATABASE_URL           | string  | yes      | —             | PostgreSQL connection string                          |
+| PORT                   | number  | no       | 3000          | HTTP listen port                                      |
+| NODE_ENV               | string  | no       | "development" | Environment (development/staging/production)          |
+| CORS_ORIGINS           | string  | yes      | —             | Comma-separated allowed origins                       |
+| JWT_SECRET             | string  | yes      | —             | Placeholder for auth feature (spec 003)               |
+| JWT_EXPIRES_IN         | string  | no       | "15m"         | Access token TTL (placeholder)                        |
+| JWT_REFRESH_EXPIRES_IN | string  | no       | "7d"          | Refresh token TTL (placeholder)                       |
+| RATE_LIMIT_TTL         | number  | no       | 60            | Rate limit window in seconds                          |
+| RATE_LIMIT_LIMIT       | number  | no       | 100           | Max requests per window per IP                        |
+| TRUST_PROXY            | boolean | no       | false         | Trust X-Forwarded-* headers (prod behind Nginx)       |
+| LOG_LEVEL              | string  | no       | "info"        | Pino log level (fatal/error/warn/info/debug/trace)    |
+| AUDIT_RETENTION_DAYS   | number  | no       | 90            | Audit records retention days (introduced in spec 005) |
 
 **Validation Rules**:
+
 - DATABASE_URL: must be a valid `postgresql://` URL
 - PORT: integer 1-65535
 - NODE_ENV: must be one of development, staging, production, test

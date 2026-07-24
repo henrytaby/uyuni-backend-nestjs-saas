@@ -39,15 +39,15 @@ nestjs-pino, pino, zod
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-| Principle | Status | Notes |
-|-----------|--------|-------|
-| I. Strict Multi-Tenant Isolation | ⚪ N/A | No tenant logic in this iteration; tenant isolation established in spec 002. Foundation must not block it — repository structure reserves `modules/` for future tenant context. |
-| II. Granular RBAC | ⚪ N/A | No authorization in this iteration. Foundation must not block it — global guard registration point reserved. |
-| III. Subscription-Driven Feature Gating | ⚪ N/A | No plan logic yet. PlanGate guard added in later specs. |
-| IV. Immutable Audit Trail | ⚡ PARTIAL | Structured logging with requestId/tenantId/userId fields established now (fields exist in log context even if tenantId/userId are null). Access log interceptor added in spec 005; foundation reserves `common/` for it. |
-| V. API-First Modular Architecture | ✅ PASS | OpenAPI/Swagger auto-generated from DTOs/Controllers; standard NestJS Feature Module structure reserved (`modules/` directory); decentralized decorator routing; global validation pipeline. |
+| Principle                               | Status  | Notes                                                                                                                                                                                        |
+| --------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| I. Strict Multi-Tenant Isolation        | ⚪ N/A  | No tenant logic in this iteration; tenant isolation established in spec 002. Foundation must not block it — repository structure reserves `modules/` for future tenant context.              |
+| II. Granular RBAC                       | ⚪ N/A  | No authorization in this iteration. Foundation must not block it — global guard registration point reserved.                                                                                 |
+| III. Subscription-Driven Feature Gating | ⚪ N/A  | No plan logic yet. PlanGate guard added in later specs.                                                                                                                                      |
+| IV. Immutable Audit Trail               | ✅ PASS | Structured logging with requestId/tenantId/userId fields established now. Full access-log interceptor + CDC fully implemented in spec 005. ALS population implemented in spec 002.           |
+| V. API-First Modular Architecture       | ✅ PASS | OpenAPI/Swagger auto-generated from DTOs/Controllers; standard NestJS Feature Module structure reserved (`modules/` directory); decentralized decorator routing; global validation pipeline. |
 
 **Gate evaluation**: No violations to justify. Principles I-III are
 intentionally deferred to specs 002-004 and do not apply to the foundation
@@ -112,15 +112,15 @@ each future domain will be a self-contained Feature Module placed here.
 
 ## Constitution Check (Post-Design Re-Evaluation)
 
-*Re-checked after Phase 1 design (data-model, contracts, quickstart).*
+_Re-checked after Phase 1 design (data-model, contracts, quickstart)._
 
-| Principle | Status | Post-Design Verification |
-|-----------|--------|---------------------------|
-| I. Strict Multi-Tenant Isolation | ⚪ DEFERRED | No tenant logic in scope. `modules/` dir reserved; data-model confirms minimal Prisma schema with no tenant-scoped models. Anti-leakage tests added in spec 002. |
-| II. Granular RBAC | ⚪ DEFERRED | No auth in scope. Global guard registration point noted; RBAC guard implemented in spec 004. |
-| III. Subscription-Driven Feature Gating | ⚪ DEFERRED | No plan logic. PlanGate guard implemented in spec 008. |
-| IV. Immutable Audit Trail | ⚡ PARTIAL ✓ | Quickstart Scenario 1 verifies structured JSON logs with requestId reserved context. Logger context shape reserves tenantId/userId. Full access-log interceptor + CDC come in spec 005 (these are not blocked by the foundation). |
-| V. API-First Modular Architecture | ✅ CONFIRMED | Quickstart Scenario 2 verifies Swagger at /api/docs; data-model documents the error response shape contract; contracts/health.md is the first interface contract; data-model confirms src/modules/ reserved for autonomous Feature Modules. |
+| Principle                               | Status       | Post-Design Verification                                                                                                                                                                                                                    |
+| --------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| I. Strict Multi-Tenant Isolation        | ⚪ DEFERRED  | No tenant logic in scope. `modules/` dir reserved; data-model confirms minimal Prisma schema with no tenant-scoped models. Anti-leakage tests added in spec 002.                                                                            |
+| II. Granular RBAC                       | ⚪ DEFERRED  | No auth in scope. Global guard registration point noted; RBAC guard implemented in spec 004.                                                                                                                                                |
+| III. Subscription-Driven Feature Gating | ⚪ DEFERRED  | No plan logic. PlanGate guard implemented in spec 008.                                                                                                                                                                                      |
+| IV. Immutable Audit Trail               | ✅ PASS ✓    | Quickstart Scenario 1 verifies structured JSON logs with requestId reserved context. Full access-log interceptor + CDC implemented in spec 005. ALS population in spec 002.                                                                 |
+| V. API-First Modular Architecture       | ✅ CONFIRMED | Quickstart Scenario 2 verifies Swagger at /api/docs; data-model documents the error response shape contract; contracts/health.md is the first interface contract; data-model confirms src/modules/ reserved for autonomous Feature Modules. |
 
 **Post-design conclusion**: No violations. Principles I-III are intentionally
 deferred to specs 002, 004, 008 and the foundation does not block them.
@@ -134,6 +134,6 @@ V is fully confirmed. No complexity tracking entries needed.
 > MUST be justified in the Implementation Plan's Complexity Tracking
 > table").
 
-| Item | Principle | Status | Justification | Mitigation |
-|------|-----------|--------|---------------|------------|
+| Item                                      | Principle                                                                                                             | Status      | Justification                                                                                                                                                                                                                                                           | Mitigation                                                                                                                                                                                                                         |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Testcontainers deferred to later features | Testing & CI/CD (constitution L218: "E2E tests MUST run against a real PostgreSQL instance in an isolated container") | ⚡ DEFERRED | Foundation ships only a minimal health e2e (plan L28: "Testcontainers added in e2e tests of later features; foundation uses a minimal health e2e"). No domain models exist yet, so full Testcontainers coverage adds setup cost without exercising real business logic. | Re-enabled in spec 002 (multi-tenancy core) when the first domain module + real DB schema introduce meaningful e2e coverage. Foundation e2e uses a configured `DATABASE_URL` against a running PostgreSQL instance in the interim. |
